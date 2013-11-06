@@ -1,0 +1,105 @@
+php_file             => stmt*
+stmt            => define_stmt | direct_output | expression_stmt | if_stmt | stmt_block | classdef_stmt | return_stmt | foreach_stmt | echo_stmt | funcdef_stmt
+stmt_block      => '{' [stmt]* '}'
+classdef_stmt   => CLASS identifier [EXTENDS identifier] '{' classdef_block '}'
+classdef_block       => [const_vardef_stmt | methoddef_stmt | constdef_stmt]*
+
+echo_stmt       => ECHO expression_list ';'
+
+for_stmt        => FOR '(' expression_list ';' expression_list ';' expression_list ')' stmt_block
+foreach_stmt    => FOREACH '(' followed_primitive AS followed_primitive [ '=>' followed_primitive ] ')' stmt_block
+
+funcdef_stmt    => 'function' IDENTIFIER parameter_list stmt_block
+
+methoddef_stmt  => [vardef_decorator]* 'function' IDENTIFIER parameter_list stmt_block
+
+vardef_stmt     => [vardef_decorator]+ VARIABLE ['=' or_expression] ';'
+const_vardef_stmt => const IDENTIFIER ['=' or_expression] ';'
+
+vardef_decorator     => 'var' | 'static' | 'private' | 'public'
+
+parameter_list       => '(' [parameter [ ',' parameter ]] ')'
+parameter            => [IDENTIFIER] VARIABLE ['=' or_expression]
+
+direct_output        => DIRECT_OUTPUT
+define_stmt     => DEFINE argument_list ';'
+return_stmt     => RETURN expression ';'
+argument_list        => '(' argument [ ',' argument ]* ')'
+argument             => expression
+expression_stmt => expression ';'
+expression_list      => expression [ ',' expression ]*
+
+expression                  =>    or_expression
+or_expression               =>    xor_expression [OR xor_expression]*
+xor_expression              =>    and_expression [XOR and_expression]*
+and_expression              =>    assignment_expression [AND assignment_expression]*
+assignment_expression       =>    conditional_expression [assignment_op conditional_expression]
+conditional_expression      =>    sym_or_expression ['?' sym_or_expression ':' sym_or_expression ]
+sym_or_expression           =>    sym_and_expression ['||' sym_and_expression]*
+sym_and_expression          =>    bit_or_expression  ['&&' bit_or_expression ]*
+bit_or_expression           =>    bit_xor_expression ['|' bit_xor_expression]*
+bit_xor_expression          =>    bit_and_expression ['^' bit_and_expression]*
+bit_and_expression          =>    eq_comp_expression ['&' eq_comp_expression]*
+eq_comp_expression          =>    order_comp_expression [eq_comp_op order_comp_expression]*
+order_comp_expression       =>    bitshift_expression   [order_comp_op bitshift_expression]*
+bitshift_expression         =>    add_expression [bitshift_op add_expression]*
+add_expression              =>    term [add_op term]*
+term                        =>    negated_typecheck [mult_op negated_typecheck]*
+negated_typecheck           =>    ['!'] typecheck
+typecheck                   =>    factor ['instanceof' typedef]
+factor                      =>    [unary]* followed_primitive
+
+
+
+followed_primitive   => primitive [follower]*
+primitive            => STRING | NUMBER | IDENTIFIER | VARIABLE | '(' expression ')' | NEW typedef argument_list | array_literal
+primitive_follower   => static_member_access | member_access | fncall | array_indexing
+array_literal        => ARRAY '(' [array_element [',' array_element]* [',']] ')'
+array_element        => expression '=>' expression
+typedef              => member_expression [static_member_access]*
+static_member_access => '::' member_expression
+member_access        => '->' member_expression
+member_expression    => IDENTIFIER | VARIABLE | '{' expression '}'
+fncall               => argument_list
+array_indexing       => '[' expression ']'
+if_stmt         => IF '(' expression ')' stmt [ELSE stmt]
+
+or_operator          => 'or' | '||'
+xor_operator         => 'xor'
+and_operator         => 'and' | '&&'
+assignment_operator  => '=' | '+=' | '-=' | '*=' | '/=' | '.=' | '%=' | '&=' | '|=' | '^=' | '<<=' | '>>='
+comp_operator        => '=='| '!=' | '===' | '!==' | '<' | '<=' | '>' | '>=' | 'instanceof'
+add_operator         => '+' | '-'  | '.'
+term_operator        => '*' | '/'  | '%'
+unary_operator       => '!' | '~'  | '++' | '--' | '+' | '-' | '@'
+
+
+1+1*5 == 3+5
+
+ AssociativityOperators
+
+left  ,
+left  or
+left  xor
+left  and
+right print
+right = += -= *= /= .= %= &= |= ^= <<= >>=
+left  ? :
+left  ||
+left  &&
+left  |
+left  ^
+left  &
+non-associative == != === !==
+non-associative < <= > >=
+left << >>
+left + - .
+left * / %
+right ! ~ ++ -- (int) (float) (string) (array) (object) @
+
+
+right [
+
+
+new_expression => 'new' quialified_identifier [argument_list]
+quialified_identifier => identifier ['::' identifier]*
