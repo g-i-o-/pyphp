@@ -1,6 +1,6 @@
 import errors
 import executer
-from phpbuiltins import PHP_CONSTANTS
+import phpbuiltins.constants as PHP_CONSTANTS
 from scope import scope
 
 

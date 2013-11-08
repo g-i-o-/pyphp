@@ -60,7 +60,7 @@ if __name__ == '__main__':
 		elif action == 'parse':
 			tokens = parser.parse_file(phpfile)
 			print "[ended parsing]\n-- tokens --"
-			print ' '.join([repr(x) for x in tokens])
+			print '\n'.join([repr(x) for x in tokens])
 		
 	else :
 		print "# No file to %s!"%action

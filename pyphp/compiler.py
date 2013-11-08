@@ -98,12 +98,19 @@ class Compiler(object):
 		
 	# Utility member functions
 	def cur_filename_line(self):
-		tok = self.tokens[self.i] if self.i < len(self.tokens) else (parser.TOKEN_EOF, )
+		tok = self.cur_token(False)
 		return tok.filename, tok.line_num
-	def cur_token(self):
+	def cur_token(self, can_verbose = True):
 		"Returns the current token."
-		tok = self.tokens[self.i] if self.i < len(self.tokens) else (parser.TOKEN_EOF, )
-		if VERBOSE >= VERBOSITY_SHOW_READ_TOKENS:
+		if self.i < len(self.tokens):
+			tok = self.tokens[self.i]
+		if len(self.tokens) > 0:
+			ltok = self.tokens[-1]
+			tok = parser.Token((parser.TOKEN_EOF,), ltok.filename, ltok.line_num)
+		else:
+			tok = parser.Token((parser.TOKEN_EOF,), None, -1)
+			
+		if can_verbose and VERBOSE >= VERBOSITY_SHOW_READ_TOKENS:
 			print "%s%s"%("  "*self.indent, tok)
 		return tok
 	def skip_to_next(self):
@@ -214,7 +221,7 @@ class Compiler(object):
 			raise CompileError("File:%s, line:%s, Expected stmt instead of %s"%(token.filename, token.line_num, ' '.join([str(x) for x in token])))
 		
 		if VERBOSE >= VERBOSITY_SHOW_COMPILED_STATEMENTS:
-			print "@@ %s"%stmt
+			print "@@ %s"%stmt.prepr()
 		return stmt
 	def compile_echo_stmt(self):         # echo_stmt          => ECHO expression_list
 		fn, ln = self.cur_filename_line()
@@ -326,11 +333,11 @@ class Compiler(object):
 	def compile_expression            (self):         #  expression                  =>    or_expression
 		return self.compile_or_expression()
 	def compile_or_expression         (self):         #  or_expression               =>    xor_expression [OR xor_expression]*
-		return self.compile_delimited_var_list("or_expression", self.compile_xor_expression, ['or'])
+		return self.compile_delimited_var_list("or_expression", self.compile_xor_expression, [parser.TOKEN_IDENTIFIER, 'or'])
 	def compile_xor_expression        (self):         #  xor_expression              =>    and_expression [XOR and_expression]*
-		return self.compile_delimited_var_list("xor_expression", self.compile_and_expression, ['xor'])
+		return self.compile_delimited_var_list("xor_expression", self.compile_and_expression, [parser.TOKEN_IDENTIFIER, 'xor'])
 	def compile_and_expression        (self):         #  and_expression              =>    assignment_expression [AND assignment_expression]*
-		return self.compile_delimited_var_list("and_expression", self.compile_assignment_expression, ['and'])
+		return self.compile_delimited_var_list("and_expression", self.compile_assignment_expression, [parser.TOKEN_IDENTIFIER, 'and'])
 	def compile_assignment_expression (self):         #  assignment_expression       =>    conditional_expression [assignment_op conditional_expression]
 		return self.compile_delimited_var_list("assignment_expression", self.compile_conditional_expression, OPERATORS_ASSIGNMENT, LEFT_ASSOCIATIVE)
 	def compile_conditional_expression(self):         #  conditional_expression      =>    sym_or_expression ['?' sym_or_expression ':' sym_or_expression ]

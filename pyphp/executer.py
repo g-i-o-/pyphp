@@ -1,6 +1,7 @@
 import parser
 import compiler
 import phpbuiltins
+import phpbuiltins.constants as constants
 import phpclass
 import phpfunction
 import phparray
@@ -17,7 +18,7 @@ VERBOSITY_SHOW_DEBUG               = 2
 VERBOSITY_SHOW_FN_CALLS            = 3
 VERBOSITY_SHOW_VISITED_NODES       = 4
 # current verbosity level
-VERBOSE = VERBOSITY_NONE
+VERBOSE = 999 # VERBOSITY_NONE
 
 
 class AbstractPhpExecuter(object):
@@ -25,10 +26,10 @@ class AbstractPhpExecuter(object):
 	def __init__(self, code_tree, initial_scope=None, config=None):
 		self.code_tree = code_tree
 		self.globals = self.make_global_scope(initial_scope)
-		self.ERROR_REPORTING = phpbuiltins.PHP_CONSTANTS['E_ALL']
+		self.ERROR_REPORTING = constants.E_ALL
 		# trace.trace_obj_calls(self, ['!', 'visit', 'get_val'])
 	
-	error_prefixes = dict([(phpbuiltins.PHP_CONSTANTS[k], v) for v, ks in ({
+	error_prefixes = dict([(getattr(constants, k), v) for v, ks in ({
 		'Fatal error' : ['E_CORE_ERROR', 'E_ERROR', 'E_USER_ERROR', 'E_COMPILE_ERROR'],
 		'Warning'     : ['E_CORE_WARNING', 'E_WARNING', 'E_USER_WARNING', 'E_COMPILE_WARNING'],
 		'Parse error' : ['E_PARSE'],
@@ -57,7 +58,7 @@ class AbstractPhpExecuter(object):
 			print "Running %r\n\n---\n"%self.code_tree
 		return self.visit(self.code_tree, self.globals)
 		
-	def visit(self, tree_node, local_dict=None):
+	def visit(self, tree_node, local_dict):
 		if VERBOSE >= VERBOSITY_SHOW_VISITED_NODES:
 			print "Visiting %s %r"%(tree_node.name, local_dict)
 		fn = getattr(self, 'exec_%s'%tree_node.name, None)
@@ -123,6 +124,24 @@ class PhpExecuter(AbstractPhpExecuter):
 		elif len(node.children) > 2:
 			return self.visit(node.children[2], local)
 	
+	def exec_eq_comp_expression(self, node, local):
+		val=None
+		for i, subnode in enumerate(node.children):
+			if not i :
+				val = self.get_val(self.visit(subnode, local))
+			else :
+				op = subnode.name
+				val2 = self.get_val(self.visit(subnode.children[0], local))
+				if op == '==':
+					val = (val2 == val)
+				elif op in ('!=', '<>'):
+					val = (val2 != val)
+				elif op == '===':
+					val = (val2 is val)
+				elif op == '!==':
+					val = not (val2 is val)
+		return val
+
 	def exec_direct_output(self, node, local):
 		from sys import stdout
 		stdout.write(node.children[0])
@@ -139,7 +158,7 @@ class PhpExecuter(AbstractPhpExecuter):
 				text = ''.join([str(self.get_val(self.visit(x, local)) if isinstance(x, compiler.TreeNode) else x) for x in token[1]])
 				return text
 		elif isinstance(subnode, compiler.TreeNode):
-			return self.visit(subnode)
+			return self.visit(subnode, local)
 		raise ExecuteError("invalid primitive %r"%subnode)
 	
 	def exec_array_literal(self, node, local):
@@ -171,6 +190,12 @@ class PhpExecuter(AbstractPhpExecuter):
 			fprimitive = self.apply_follower(fprimitive, node.children[f_idx], local)
 			
 		return fprimitive
+	
+	def exec_negated(self, node, local):
+		# print node.prepr()
+		val = self.get_val(self.visit(node.children[0], local))
+		# print val, not val
+		return not val
 	
 	def exec_factor(self, node, local):
 		unaries = node.children[0]
@@ -249,6 +274,14 @@ class PhpExecuter(AbstractPhpExecuter):
 		if default:
 			param.append(default)
 		return param
+	
+	def exec_and_expression(self, node, local):
+		for subnode in node.children:
+			val = self.get_val(self.visit(subnode, local))
+			if not val:
+				return False
+		return val
+	
 	
 	def apply_follower(self, factor, follower, local):
 		# print follower

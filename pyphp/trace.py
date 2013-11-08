@@ -16,7 +16,7 @@ trace_temps = {
 }
 def trace(fn, show_tids = False):
 	global 	trace_temps
-	pre_tt, post_tt  = trace_temps['tids' if show_tids else 'basic']
+	pre_tt, post_tt  = trace_temps[(show_tids if type(show_tids) is str else 'tids') if show_tids else 'basic']
 	
 	def tfn(*a,**b):
 		global trace_stack, tcid
