@@ -6,7 +6,7 @@ import phpclass
 import phpfunction
 import phparray
 from varref import VarRef, VarDef
-from errors import ExecuteError
+from errors import ExecuteError, ReturnError
 import trace
 from scope import scope
 
@@ -20,47 +20,6 @@ VERBOSITY_SHOW_VISITED_NODES       = 4
 # current verbosity level
 VERBOSE = VERBOSITY_NONE
 
-# def exec_bit_and_expression(self, node, local):
-# def exec_bit_or_expression(self, node, local):
-# def exec_bit_xor_expression(self, node, local):
-# def exec_bitshift_expression(self, node, local):
-# 
-# 
-# def exec_conditional_expression(self, node, local):
-# 
-# 
-# 
-# 
-# 	
-# def exec_expression_list(self, node, local):
-# 
-# def exec_fncall(self, node, local):
-# 
-# def exec_for_stmt(self, node, local):
-# def exec_foreach_stmt(self, node, local):
-# 
-# 
-# def exec_member_access(self, node, local):
-# 
-# 
-# 
-# def exec_or_expression(self, node, local):
-# def exec_order_comp_expression(self, node, local):
-# 
-# 
-# 
-# 
-# def exec_return_stmt(self, node, local):
-# def exec_static_member_access(self, node, local):
-# 
-# def exec_sym_and_expression(self, node, local):
-# def exec_sym_or_expression(self, node, local):
-# def exec_term_expression(self, node, local):
-# def exec_typecheck(self, node, local):
-# def exec_typedef(self, node, local):
-# def exec_unary_op(self, node, local):
-# 
-# def exec_xor_expression(self, node, local):
 
 
 class AbstractPhpExecuter(object):
@@ -70,7 +29,7 @@ class AbstractPhpExecuter(object):
 		self.filename = code_tree.filename
 		self.globals = self.make_global_scope(initial_scope)
 		self.ERROR_REPORTING = constants.E_ALL
-		# trace.trace_obj_calls(self, ['!', 'visit', 'get_val'])
+		trace.trace_obj_calls(self, ['!', 'visit', 'get_val'])
 	
 	error_prefixes = dict([(getattr(constants, k), v) for v, ks in ({
 		'Fatal error' : ['E_CORE_ERROR', 'E_ERROR', 'E_USER_ERROR', 'E_COMPILE_ERROR'],
@@ -165,6 +124,43 @@ class PhpExecuter(AbstractPhpExecuter):
 			self.set_val(lhs_var_ref, rhs_value)
 			lhs_idx -= 1
 		return rhs_value
+
+
+	def exec_bit_and_expression(self, node, local):
+		val = -1
+		for subnode in node.children:
+			val &= int(self.get_val(self.visit(subnode, local)))
+		return val
+	
+	def exec_bit_or_expression(self, node, local):
+		val = 0
+		for subnode in node.children:
+			val |= int(self.get_val(self.visit(subnode, local)))
+		return val
+	
+	def exec_bit_or_expression(self, node, local):
+		val = 0
+		for subnode in node.children:
+			val ^= int(self.get_val(self.visit(subnode, local)))
+		return val
+	
+	#def exec_bitshift_expression(self, node, local):
+	#	num = int(self.get_val(self.visit(subnode, local)))
+	#	num, bits = [int(self.get_val(self.visit(subnode, local))) for subnode in node.children[:2]]
+	#	return num << 
+	
+	#def exec_expression_list(self, node, local):
+	#	pass
+	#def exec_for_stmt(self, node, local):
+	#	pass
+	#def exec_foreach_stmt(self, node, local):
+	#	pass
+	def exec_return_stmt(self, node, local):
+		raise ReturnError(self.visit(node.children[0], local) if len(node.children) > 0 else None)
+	#def exec_term_expression(self, node, local):
+	#	pass
+	#def exec_typecheck(self, node, local):
+	#	pass
 	
 	def exec_if(self, node, local):
 		condition = self.visit(node.children[0], local)
@@ -189,6 +185,24 @@ class PhpExecuter(AbstractPhpExecuter):
 					val = (val2 is val)
 				elif op == '!==':
 					val = not (val2 is val)
+		return val
+	
+	def exec_order_comp_expression(self, node, local):
+		val=None
+		for i, subnode in enumerate(node.children):
+			if not i :
+				val = self.get_val(self.visit(subnode, local))
+			else :
+				op = subnode.name
+				val2 = self.get_val(self.visit(subnode.children[0], local))
+				if op == '<':
+					val = (val < val2)
+				elif op in ('<='):
+					val = (val <= val2)
+				elif op == '>':
+					val = (val > val2)
+				elif op == '>=':
+					val = (val >= val2)
 		return val
 
 	def exec_direct_output(self, node, local):
@@ -339,6 +353,24 @@ class PhpExecuter(AbstractPhpExecuter):
 				return False
 		return val
 	
+	exec_sym_and_expression = exec_and_expression
+	
+	def exec_or_expression(self, node, local):
+		print node.prepr()
+		for i, subnode in enumerate(node.children):
+			val = self.get_val(self.visit(subnode.children[0] if i else subnode, local))
+			if val:
+				return val
+		return False
+	
+	exec_sym_or_expression = exec_or_expression
+	
+	def exec_xor_expression(self, node, local):
+		lval = False
+		for subnode in node.children:
+			val = self.get_val(self.visit(subnode, local))
+			lval = (val and not lval) or (lval and not val)
+		return lval
 	
 	def apply_follower(self, factor, follower, local):
 		# print follower

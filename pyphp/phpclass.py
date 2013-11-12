@@ -21,7 +21,10 @@ class PHPClass:
 			member = self.body[key]
 			if hasattr(member, 'is_static') and not member.is_static():
 				raise errors.ExecuteError("Fetching non-static member %r from %r."%(member, self))
-			return member.bind(self.context)
+			if hasattr(member, 'bind'):
+				return member.bind(self.context)
+			else:
+				return member
 		else:
 			if self.superclass:
 				return self.superclass[key]

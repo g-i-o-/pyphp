@@ -60,7 +60,10 @@ class PHPFunction():
 		# print self.body
 		# print call_context
 		
-		executer.visit(self.body, call_context)
+		try:
+			return executer.visit(self.body, call_context)
+		except errors.ReturnError, rerr:
+			return rerr.retval
 		
 		# raise errors.ExecuteError("Can't execute yet.")
 	
