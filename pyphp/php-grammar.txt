@@ -29,7 +29,8 @@ argument             => expression
 expression_stmt => expression ';'
 expression_list      => expression [ ',' expression ]*
 
-expression                  =>    or_expression
+expression                  =>    print_expression
+print_expression            =>    [PRINT] or_expression
 or_expression               =>    xor_expression [OR xor_expression]*
 xor_expression              =>    and_expression [XOR and_expression]*
 and_expression              =>    assignment_expression [AND assignment_expression]*

@@ -19,7 +19,7 @@ class PHPClass:
 	def __getitem__(self, key):
 		if key in self.body:
 			member = self.body[key]
-			if not member.is_static():
+			if hasattr(member, 'is_static') and not member.is_static():
 				raise errors.ExecuteError("Fetching non-static member %r from %r."%(member, self))
 			return member.bind(self.context)
 		else:
