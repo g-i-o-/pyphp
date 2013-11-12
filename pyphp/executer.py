@@ -20,6 +20,48 @@ VERBOSITY_SHOW_VISITED_NODES       = 4
 # current verbosity level
 VERBOSE = 999 # VERBOSITY_NONE
 
+# def exec_bit_and_expression(self, node, local):
+# def exec_bit_or_expression(self, node, local):
+# def exec_bit_xor_expression(self, node, local):
+# def exec_bitshift_expression(self, node, local):
+# 
+# 
+# def exec_conditional_expression(self, node, local):
+# 
+# 
+# 
+# 
+# 	
+# def exec_expression_list(self, node, local):
+# 
+# def exec_fncall(self, node, local):
+# 
+# def exec_for_stmt(self, node, local):
+# def exec_foreach_stmt(self, node, local):
+# 
+# 
+# def exec_member_access(self, node, local):
+# 
+# 
+# 
+# def exec_or_expression(self, node, local):
+# def exec_order_comp_expression(self, node, local):
+# 
+# 
+# 
+# 
+# def exec_return_stmt(self, node, local):
+# def exec_static_member_access(self, node, local):
+# 
+# def exec_sym_and_expression(self, node, local):
+# def exec_sym_or_expression(self, node, local):
+# def exec_term_expression(self, node, local):
+# def exec_typecheck(self, node, local):
+# def exec_typedef(self, node, local):
+# def exec_unary_op(self, node, local):
+# 
+# def exec_xor_expression(self, node, local):
+
 
 class AbstractPhpExecuter(object):
 	
