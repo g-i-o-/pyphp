@@ -5,12 +5,14 @@ Declares a @builtin decorator class for tagging php built-in functions, as well 
 import scope
 
 import builtin
+import string
+import regex
 import constants
 import datetime
 import lang
 
 def gen_builtins():
-	modules=[constants, datetime, lang]
+	modules=[constants, datetime, lang, string, regex]
 	for module in modules:
 		for member_name in dir(module):
 			member = getattr(module, member_name)
@@ -27,5 +29,3 @@ builtins = scope.scope(
 	dict(x for x in gen_builtins()),
 	name='phpbuiltins'
 )
-
-print builtins

@@ -22,6 +22,12 @@ class PHPArray:
 		for k, v in args:
 			self[k] = v
 			
+	def values(self):
+		return [self.dict[k] for k in self.keys]
+		
+	def keys(self):
+		return self.keys[:]
+	
 	@staticmethod
 	def _is_numerable(k):
 		if type(k) in (float, int):

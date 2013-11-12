@@ -18,13 +18,14 @@ VERBOSITY_SHOW_DEBUG               = 2
 VERBOSITY_SHOW_FN_CALLS            = 3
 VERBOSITY_SHOW_VISITED_NODES       = 4
 # current verbosity level
-VERBOSE = 999 # VERBOSITY_NONE
+VERBOSE = VERBOSITY_NONE
 
 
 class AbstractPhpExecuter(object):
 	
 	def __init__(self, code_tree, initial_scope=None, config=None):
 		self.code_tree = code_tree
+		self.filename = code_tree.filename
 		self.globals = self.make_global_scope(initial_scope)
 		self.ERROR_REPORTING = constants.E_ALL
 		# trace.trace_obj_calls(self, ['!', 'visit', 'get_val'])
@@ -48,6 +49,9 @@ class AbstractPhpExecuter(object):
 	def make_global_scope(self, initial_scope=None):
 		if initial_scope is None:
 			initial_scope = {}
+		initial_scope['$_SERVER']=phparray.PHPArray(
+			('SCRIPT_NAME', self.filename)
+		)
 		return scope(initial_scope, {'%executer':self}, phpbuiltins.builtins, name='global')
 		
 	def __call__(self):
@@ -100,6 +104,9 @@ class PhpExecuter(AbstractPhpExecuter):
 		from sys import stdout
 		echo_args = [self.get_val(self.visit(subnode, local)) for subnode in node.children]
 		stdout.write(''.join(echo_args))
+		return 1
+	
+	exec_print_expression = exec_echo
 	
 	def exec_define(self, node, local):
 		args = [self.visit(i, local) for i in node.children]
@@ -330,7 +337,7 @@ class PhpExecuter(AbstractPhpExecuter):
 		
 		if factor is None:
 			raise ExecuteError("null is not callable.")
-		elif isinstance(factor, phpbuiltins.builtin):
+		elif isinstance(factor, phpbuiltins.builtin.builtin):
 			args = [ self.visit(x, local) for x in follower.children[0].children]
 			if VERBOSE >= VERBOSITY_SHOW_FN_CALLS:
 				print "calling builtin %r with %r"%(factor, args)

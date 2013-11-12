@@ -7,6 +7,7 @@ Language-related builtin functions.
 """
 
 from builtin import builtin
+import errors
 
 
 @builtin
@@ -53,7 +54,7 @@ def include_impl(args, executer, local_dict, require=False, once=False):
 			executer.globals[lf_key][path] = True
 			executer.visit(compiler.compile_file(path), local_dict)
 		elif require:
-			raise ExecuteError("required file %s not found!"%path)
+			raise errors.ExecuteError("required file %s not found!"%path)
 	
 
 @builtin

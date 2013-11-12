@@ -29,6 +29,7 @@ KEYWORD_EXTENDS   = 'extends';
 KEYWORD_INSTANCEOF= 'instanceof';
 KEYWORD_CONST     = 'const';
 KEYWORD_ECHO      = 'echo';
+KEYWORD_PRINT     = 'print';
 
 VARDEF_DECORATORS = ('var', 'public', 'private', 'protected', 'static');
 
@@ -104,7 +105,7 @@ class Compiler(object):
 		"Returns the current token."
 		if self.i < len(self.tokens):
 			tok = self.tokens[self.i]
-		if len(self.tokens) > 0:
+		elif len(self.tokens) > 0:
 			ltok = self.tokens[-1]
 			tok = parser.Token((parser.TOKEN_EOF,), ltok.filename, ltok.line_num)
 		else:
@@ -330,8 +331,15 @@ class Compiler(object):
 			self.skip_to_next()
 			l.append(self.compile_expression())
 		return TreeNode('expression_list', l, fn, ln)
-	def compile_expression            (self):         #  expression                  =>    or_expression
-		return self.compile_or_expression()
+	def compile_expression            (self):         #  expression                  =>    print_expression
+		return self.compile_print_expression()
+	def compile_print_expression      (self):         #  expression                  =>    [PRINT] or_expression
+		tok = self.cur_token()
+		if tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_PRINT:
+			self.skip_to_next()
+			return TreeNode('print_expression', [self.compile_or_expression()], tok.filename, tok.line_num)
+		else:
+			return self.compile_or_expression()
 	def compile_or_expression         (self):         #  or_expression               =>    xor_expression [OR xor_expression]*
 		return self.compile_delimited_var_list("or_expression", self.compile_xor_expression, [parser.TOKEN_IDENTIFIER, 'or'])
 	def compile_xor_expression        (self):         #  xor_expression              =>    and_expression [XOR and_expression]*

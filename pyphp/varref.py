@@ -1,4 +1,4 @@
-import phpbuiltins
+import phpbuiltins.constants
 
 VERBOSITY_NONE = 0
 VERBOSITY_SHOW_DEBUG = 1
@@ -47,7 +47,7 @@ class VarRef(object):
 		context_name, context = self.get_context_obj(True)
 		# print "%r[%r] = %r"%(context, self.name, value)
 		if self.name not in context:
-			self.executer.report_error( phpbuiltins.PHP_CONSTANTS['E_WARNING'], "%s[%r] doesn't exist"%(context_name, self.name) )
+			self.executer.report_error( phpbuiltins.constants.E_WARNING, "%s[%r] doesn't exist"%(context_name, self.name) )
 			return None
 		return context[self.name]
 		
