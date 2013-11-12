@@ -251,6 +251,14 @@ class PhpExecuter(AbstractPhpExecuter):
 		# print name
 		return VarDef(name[1], modifiers, initval)
 	
+	def exec_conditional_expression(self, node, local):
+		condition, true_block, false_block = node.children[:3]
+		if self.get_val(self.visit(condition, local)):
+			return self.visit(true_block, local)
+		else:
+			return self.visit(false_block, local)
+
+	
 	def exec_const_vardef_stmt(self, node, local):
 		name = node.children[0][1]
 		val  = self.get_val(self.visit(node.children[1], local)) if len(node.children) > 1 else None
