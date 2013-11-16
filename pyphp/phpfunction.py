@@ -1,6 +1,6 @@
 import errors
 import executer
-import phpbuiltins.constants as PHP_CONSTANTS
+from phpbuiltins import constants
 from scope import scope
 
 
@@ -46,7 +46,7 @@ class PHPFunction():
 			else:
 				val = None
 				executer.report_error(
-					PHP_CONSTANTS['E_WARNING'],
+					constants.E_WARNING,
 					"Missing argument %d for %s()%s defined in %s on line %d"%(i+1, self.name,
 						', called in %s on line %d and'%(caller_filename, caller_line_num) if caller_filename is not None and caller_line_num is not None else '',
 						self.filename, self.line_num)

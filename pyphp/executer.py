@@ -348,6 +348,8 @@ class PhpExecuter(AbstractPhpExecuter):
 	
 	def exec_and_expression(self, node, local):
 		for subnode in node.children:
+			if subnode.name in ('&&', 'and'):
+				subnode = subnode.children[0]
 			val = self.get_val(self.visit(subnode, local))
 			if not val:
 				return False
