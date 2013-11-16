@@ -360,6 +360,7 @@ class PhpExecuter(AbstractPhpExecuter):
 	def exec_or_expression(self, node, local):
 		print node.prepr()
 		for i, subnode in enumerate(node.children):
+			print subnode
 			val = self.get_val(self.visit(subnode.children[0] if i else subnode, local))
 			if val:
 				return val
