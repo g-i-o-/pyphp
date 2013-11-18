@@ -1,13 +1,24 @@
 php_file             => stmt*
-stmt            => define_stmt | direct_output | expression_stmt | if_stmt | stmt_block | classdef_stmt | return_stmt | foreach_stmt | echo_stmt | funcdef_stmt
+stmt            => define_stmt | direct_output | expression_stmt | if_stmt | stmt_block | classdef_stmt | return_stmt | while_stmt | foreach_stmt | echo_stmt | funcdef_stmt | switch_stmt | throw_stmt
 stmt_block      => '{' [stmt]* '}'
 classdef_stmt   => CLASS identifier [EXTENDS identifier] '{' classdef_block '}'
 classdef_block       => [const_vardef_stmt | methoddef_stmt | constdef_stmt]*
 
 echo_stmt       => ECHO expression_list ';'
 
+while_stmt      => WHILE '(' expression_list ')' stmt_block
+
 for_stmt        => FOR '(' expression_list ';' expression_list ';' expression_list ')' stmt_block
 foreach_stmt    => FOREACH '(' followed_primitive AS followed_primitive [ '=>' followed_primitive ] ')' stmt_block
+
+throw_stmt      => THROW expression_list ';'
+try_stmt        => TRY stmt_block ([catch_block]+ [finally_block]  | finally_block)
+catch_block     => CATCH '(' parameter ')' stmt_block
+finally_block   => FINALLY stmt_block
+
+switch_stmt     => SWITCH '(' expression_list ')' '{' switch_case+ [switch_default]'}'
+switch_case     => CASE expression ':' [stmt]*
+switch_default  => DEFAULT ':' [stmt]*
 
 funcdef_stmt    => 'function' IDENTIFIER parameter_list stmt_block
 
@@ -19,7 +30,7 @@ const_vardef_stmt => const IDENTIFIER ['=' or_expression] ';'
 vardef_decorator     => 'var' | 'static' | 'private' | 'public'
 
 parameter_list       => '(' [parameter [ ',' parameter ]] ')'
-parameter            => [IDENTIFIER] VARIABLE ['=' or_expression]
+parameter            => [IDENTIFIER] [&] VARIABLE ['=' or_expression]
 
 direct_output        => DIRECT_OUTPUT
 define_stmt     => DEFINE argument_list ';'
@@ -51,10 +62,10 @@ typecheck                   =>    factor ['instanceof' typedef]
 factor                      =>    [unary]* followed_primitive
 
 
-
 followed_primitive   => primitive [follower]*
-primitive            => STRING | NUMBER | IDENTIFIER | VARIABLE | '(' expression ')' | NEW typedef argument_list | array_literal
-primitive_follower   => static_member_access | member_access | fncall | array_indexing
+primitive            => STRING | NUMBER | IDENTIFIER | ['&'] VARIABLE | '(' expression ')' | NEW typedef argument_list | array_literal
+primitive_follower   => static_member_access | member_access | fncall | array_indexing | unary_follower
+unary_follower       => '++' | '--'
 array_literal        => ARRAY '(' [array_element [',' array_element]* [',']] ')'
 array_element        => expression '=>' expression
 typedef              => member_expression [static_member_access]*

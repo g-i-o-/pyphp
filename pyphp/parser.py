@@ -194,12 +194,27 @@ class Parser:
 			self.i += len(m_text)
 			
 	def parse_string(self):
-		s_m = RE_sq_string.match(self.code, self.i)
-		if not s_m:
-			return
-		s_text = s_m.group(1)
+		code = self.code
+		if code[self.i] != "'":
+			raise ParseError("Non-Interpolated string must start with a '", self)
+		clen = len(code)
+		self.i += 1
+		start = self.i
+		while self.i < clen:
+			c = code[self.i]
+			if c == '\\' and self.i + 1 < clen and code[self.i+1] == "'":
+				self.i+=2
+			elif c == "'":
+				break
+			else:
+				self.i+=1
+		else:
+			raise ParseError("Expected en of string, not end of file.", self)
+		print ParseError('', self)
+		print [start, self.i], code[start-1:self.i+1]
+		s_text = code[start:self.i]
 		self.tokens.append(Token([TOKEN_STRING, s_text], self.filename, self.line_num))
-		self.i += len(s_m.group(0))
+		self.i += 1
 			
 	def parse_interp_string(self, tokens = None):
 		code = self.code

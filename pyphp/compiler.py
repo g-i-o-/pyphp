@@ -30,6 +30,14 @@ KEYWORD_INSTANCEOF= 'instanceof';
 KEYWORD_CONST     = 'const';
 KEYWORD_ECHO      = 'echo';
 KEYWORD_PRINT     = 'print';
+KEYWORD_SWITCH    = 'switch';
+KEYWORD_CASE      = 'case';
+KEYWORD_THROW     = 'throw';
+KEYWORD_TRY       = 'try';
+KEYWORD_CATCH     = 'catch';
+KEYWORD_FINALLY   = 'finally';
+KEYWORD_DEFAULT   = 'default';
+KEYWORD_WHILE     = 'while';
 
 VARDEF_DECORATORS = ('var', 'public', 'private', 'protected', 'static');
 
@@ -180,7 +188,7 @@ class Compiler(object):
 		while self.i < len(self.tokens):
 			stmts.append(self.compile_stmt())
 		return TreeNode("php_file", stmts, fn, ln)
-	def compile_stmt(self): # stmt => define_stmt | direct_output | expression_stmt | if_stmt | stmt_block | classdef_stmt | return_stmt | foreach_stmt
+	def compile_stmt(self): # stmt => define_stmt | direct_output | expression_stmt | if_stmt | stmt_block | classdef_stmt | return_stmt | foreach_stmt | switch_stmt | throw_stmt | try_stmt
 		self.skip_comments_and_ws()
 		token = self.cur_token()
 		stmt = None
@@ -196,12 +204,20 @@ class Compiler(object):
 				stmt = self.compile_for_stmt()
 			elif ident_lc_name == KEYWORD_FUNCTION:
 				stmt = self.compile_funcdef_stmt()
+			elif ident_lc_name == KEYWORD_WHILE:
+				stmt = self.compile_while_stmt()
 			elif ident_lc_name == KEYWORD_FOREACH:
 				stmt = self.compile_foreach_stmt()
 			elif ident_lc_name == KEYWORD_RETURN:
 				stmt = self.compile_return_stmt()
 			elif ident_lc_name == KEYWORD_CLASS:
 				stmt = self.compile_classdef_stmt()
+			elif ident_lc_name == KEYWORD_SWITCH:
+				stmt = self.compile_switch_stmt()
+			elif ident_lc_name == KEYWORD_THROW:
+				stmt = self.compile_throw_stmt()
+			elif ident_lc_name == KEYWORD_TRY:
+				stmt = self.compile_try_stmt()
 			elif ident_lc_name == KEYWORD_ECHO:
 				stmt = self.compile_echo_stmt()
 		elif token[0] == parser.TOKEN_DIRECT_OUTPUT:
@@ -265,6 +281,105 @@ class Compiler(object):
 			(';', )
 		)
 		return TreeNode('return_stmt', [seq[1]], fn, ln)
+
+	def compile_switch_stmt(self):       # switch_stmt    => SWITCH '(' expression_list ')' '{' switch_case+ [switch_default]'}'
+		fn, ln = self.cur_filename_line()
+		seq = self.expect_sequence(
+			(parser.TOKEN_IDENTIFIER, KEYWORD_SWITCH),
+			('(', ),
+			self.compile_expression_list,
+			(')', ),
+			('{', )
+		)
+		cases = [seq[2]]
+		tok = self.cur_token()
+		while tok[0] != '}':
+			self.expect_token(parser.TOKEN_IDENTIFIER)
+			if tok[1] == KEYWORD_CASE:
+				cases.append(self.compile_switch_case())
+			elif tok[1] == KEYWORD_DEFAULT:
+				cases.append(self.compile_switch_default())
+			else:
+				raise CompileError("expected 'case', 'default' or '}'.")
+			tok = self.cur_token()
+		self.skip_to_next()
+		return TreeNode('switch_stmt', cases, fn, ln)
+		
+	def compile_switch_case(self):       # switch_case    => CASE expression ':' [stmt]*
+		fn, ln = self.cur_filename_line()
+		seq = self.expect_sequence(
+			(parser.TOKEN_IDENTIFIER, KEYWORD_CASE),
+			self.compile_expression_list,
+			(':', )
+		)
+		tok = self.cur_token()
+		statements = []
+		while not (tok[0] == '}' or (tok[0] == parser.TOKEN_IDENTIFIER and tok[1] in (KEYWORD_CASE, KEYWORD_DEFAULT))):
+			statements.append(self.compile_stmt())
+			tok = self.cur_token()
+		return TreeNode('switch_case', [seq[1], statements], fn, ln)
+		
+	def compile_switch_default(self):    # switch_default => DEFAULT ':' [stmt]*
+		fn, ln = self.cur_filename_line()
+		seq = self.expect_sequence(
+			(parser.TOKEN_IDENTIFIER, KEYWORD_DEFAULT),
+			(':', )
+		)
+		tok = self.cur_token()
+		statements = []
+		while not (tok[0] == '}' or (tok[0] == parser.TOKEN_IDENTIFIER and tok[1] in (KEYWORD_CASE, KEYWORD_DEFAULT))):
+			statements.append(self.compile_stmt())
+			tok = self.cur_token()
+		return TreeNode('switch_default', statements, fn, ln)
+
+	def compile_throw_stmt(self):        # throw_stmt      => THROW expression_list ';'
+		fn, ln = self.cur_filename_line()
+		seq = self.expect_sequence(
+			(parser.TOKEN_IDENTIFIER, KEYWORD_THROW),
+			self.compile_expression_list,
+			(';', )
+		)
+		return TreeNode('throw_stmt', [seq[1]], fn, ln)
+	
+	def compile_try_stmt(self):          # try_stmt        => TRY stmt_block [CATCH '(' parameter ')' stmt_block]* [FINALLY stmt_block]
+		fn, ln = self.cur_filename_line()
+		try_seq = self.expect_sequence(
+			(parser.TOKEN_IDENTIFIER, KEYWORD_TRY),
+			self.compile_stmt_block
+		)
+		catch_blocks = []
+		tok = self.cur_token()
+		while tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_CATCH:
+			catch_blocks.append(self.compile_catch_block())
+			tok = self.cur_token()
+		
+		finally_block = self.compile_finally_block() if tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_FINALLY else None
+		
+		if len(catch_blocks) == 0 and finally_block is None:
+			raise CompileError('expected catch or finally in try statement.');
+		
+		return TreeNode('try_stmt', [try_seq[1], catch_blocks, finally_block], fn, ln)
+	
+	def compile_catch_block(self):       # catch_block     => CATCH '(' parameter ')' stmt_block
+		fn, ln = self.cur_filename_line()
+		catch_seq = self.expect_sequence(
+			(parser.TOKEN_IDENTIFIER, KEYWORD_CATCH),
+			('(', ),
+			self.compile_parameter
+			(')', ),
+			self.compile_stmt_block
+		)
+		return TreeNode('catch_block', [seq[2], seq[4]], fn, ln)
+		
+	def compile_finally_block(self):    # finally_block   => FINALLY stmt_block
+		fn, ln = self.cur_filename_line()
+		catch_seq = self.expect_sequence(
+			(parser.TOKEN_IDENTIFIER, KEYWORD_FINALLY),
+			self.compile_stmt_block
+		)
+		return TreeNode('finally_block', [seq[1]], fn, ln)
+
+
 	def compile_for_stmt    (self):              #  for_stmt        => FOR '(' expression_list ';' expression_list ';' expression_list ')' stmt_block
 		fn, ln = self.cur_filename_line()
 		seq = self.expect_sequence(
@@ -279,6 +394,18 @@ class Compiler(object):
 			self.compile_stmt_block
 		)
 		return TreeNode('for_stmt', [seq[2], seq[4], seq[6], seq[8]], fn, ln)
+
+	def compile_while_stmt(self):       # while_stmt      => WHILE '(' expression_list ')' stmt_block
+		fn, ln = self.cur_filename_line()
+		seq = self.expect_sequence(
+			(parser.TOKEN_IDENTIFIER, KEYWORD_WHILE),
+			('(', ),
+			self.compile_expression_list,
+			(')', ),
+			self.compile_stmt_block
+		)
+		return TreeNode('while_stmt', [seq[2], seq[4]], fn, ln)
+
 	def compile_foreach_stmt(self):              #  foreach_stmt    => FOREACH '(' VARIABLE AS VARIABLE [ '=>' VARIABLE ] ')' stmt_block
 		fn, ln = self.cur_filename_line()
 		seq = self.expect_sequence(
@@ -426,6 +553,18 @@ class Compiler(object):
 	
 	def compile_primitive(self):              #  primitive              => string | number | identifier | variable | '(' expression ')' | NEW typedef argument_list | array_literal
 		tok=self.cur_token()
+		last_i = self.i
+		if tok[0] == '&':
+			ref_type = True
+			self.skip_to_next()
+			tok2=self.cur_token()
+			if tok2[0] == parser.TOKEN_VARIABLE:
+				self.skip_to_next()
+				return TreeNode("primitive", [tok2, tok], tok.filename, tok.line_num)
+			else:
+				raise CompileError("Expected variable after & token");
+		else:
+			ref_type = True
 		if tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_NEW:
 			seq = self.expect_sequence(
 				(parser.TOKEN_IDENTIFIER, KEYWORD_NEW),
@@ -496,7 +635,7 @@ class Compiler(object):
 				break
 		return TreeNode("typedef", args, fn, ln)
 
-	def compile_primitive_follower(self):     #  primitive_follower     => static_member_access | member_access | fncall | array_indexing
+	def compile_primitive_follower(self):     #  primitive_follower     => static_member_access | member_access | fncall | array_indexing | unary_follower
 		tok = self.cur_token()
 		follower=None
 		if tok[0] == '::':
@@ -507,9 +646,19 @@ class Compiler(object):
 			follower = self.compile_fncall()
 		elif tok[0] == '[':
 			follower = self.compile_array_indexing()
+		elif tok[0] in ('++', '--'):
+			follower = self.compile_unary_follower()
 		else:
 			raise CompileError("Expected -> [ or (, not %s"%self.cur_token()[0])
 		return follower # TreeNode('follower', follower)
+	
+	def compile_unary_follower(self):         #  unary_follower => '++' | '--'
+		tok = self.cur_token()
+		if tok[0] in ('++', '--'):
+			self.skip_to_next()
+			return TreeNode('unary_follower', [tok], tok.filename, tok.line_num)
+		else:
+			raise CompileError('Expected ++ or --')
 	
 	def compile_static_member_access(self):   #  static_member_access   => '::' member_expression
 		fn, ln = self.cur_filename_line()
@@ -611,7 +760,7 @@ class Compiler(object):
 					self.i = start_i
 					stmt = self.compile_methoddef_stmt()
 				else:
-					raise CompileError("File:%s, line:%s, Expected stmt instead of %s"%(tok.filename, tok.line_num, ' '.join([str(x) for x in token])))
+					raise CompileError("File:%s, line:%s, Expected stmt instead of %s"%(tok.filename, tok.line_num, ' '.join([str(x) for x in tok])))
 			args.append(stmt)
 			# self.skip_to_next()
 			tok = self.cur_token()
@@ -658,10 +807,13 @@ class Compiler(object):
 		return TreeNode("parameter_list", param_list, fn, ln)
 	def compile_parameter     (self):         #  parameter            => [IDENTIFIER] VARIABLE ['=' or_expression]
 		fn, ln = self.cur_filename_line()
-		typedef, varname, assign = None, None, None
+		typedef, varname, assign, is_ref = None, None, None, False
 		tok = self.cur_token()
 		if tok[0] == parser.TOKEN_IDENTIFIER:
 			typedef = tok
+			self.skip_to_next()
+		if tok[0] == '&':
+			is_ref = True
 			self.skip_to_next()
 		self.expect_token(parser.TOKEN_VARIABLE)
 		varname = self.cur_token()
@@ -669,7 +821,7 @@ class Compiler(object):
 		if self.cur_token()[0] == '=':
 			self.skip_to_next()
 			assign = self.compile_or_expression()
-		return TreeNode("parameter", [typedef, varname, assign], fn, ln)
+		return TreeNode("parameter", [typedef, varname, assign, is_ref], fn, ln)
 		
 	def compile_vardef_stmt  (self):     #  vardef_stmt     => [vardef_decorator]+ VARIABLE ['=' or_expression] ';'
 		fn, ln = self.cur_filename_line()
