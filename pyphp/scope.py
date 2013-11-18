@@ -1,4 +1,5 @@
-
+from prepr import prepr
+	
 class scope(object):
 	"Represents a scope, a context in which variables and functions are defined and bound to."
 	def __init__(self, d=None, *parents, **kwargs):
@@ -27,3 +28,11 @@ class scope(object):
 		return itertools.chain(self.dict, *self.parents)
 	def __repr__(self):
 		return '%sscope(%r)%s'%(self.name + '-' if self.name else '', self.dict, ('-[%s]'%(''.join([repr(x) for x in self.parents]))) if self.parents else '')
+	def prepr(self, depth=0, dchr=' '):
+		dstr=dchr*depth
+		return '%s%sscope :\n%s %s%s'%(
+			dstr, self.name + '-' if self.name else '',
+			dstr, ('\n%s '%dstr).join(['%s => %r'%(x,y) for x,y in self.dict.items()]),
+			'\n'+
+			'\n'.join([prepr(p, depth+1) for p in self.parents] if self.parents else [])
+		)

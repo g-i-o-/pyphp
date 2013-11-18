@@ -1,12 +1,15 @@
 import parser
 import compiler
 import phpbuiltins
+import prepr
+from phpbuiltins.primitives import primitives
 import phpbuiltins.constants as constants
 import phpclass
 import phpfunction
 import phparray
+import coerce
 from varref import VarRef, VarDef
-from errors import ExecuteError, ReturnError
+from errors import ExecuteError, ReturnError, StopExecutionError
 import trace
 from scope import scope
 
@@ -29,22 +32,27 @@ class AbstractPhpExecuter(object):
 		self.filename = code_tree.filename
 		self.globals = self.make_global_scope(initial_scope)
 		self.ERROR_REPORTING = constants.E_ALL
-		trace.trace_obj_calls(self, ['!', 'visit', 'get_val'])
+		self.last_node  = None
+		self.last_scope = None
+		if VERBOSE >= VERBOSITY_SHOW_VISITED_NODES:
+			trace.trace_obj_calls(self, ['!', 'visit', 'get_val', 'report_error'], 'args')
 	
-	error_prefixes = dict([(getattr(constants, k), v) for v, ks in ({
-		'Fatal error' : ['E_CORE_ERROR', 'E_ERROR', 'E_USER_ERROR', 'E_COMPILE_ERROR'],
-		'Warning'     : ['E_CORE_WARNING', 'E_WARNING', 'E_USER_WARNING', 'E_COMPILE_WARNING'],
-		'Parse error' : ['E_PARSE'],
-		'Notice'      : ['E_NOTICE', 'E_USER_NOTICE'],
-		'Strict Standards' : ['E_STRICT'],
-		'Catchable fatal error' : ['E_RECOVERABLE_ERROR'],
-		'Deprecated'  : ['E_DEPRECATED', 'E_USER_DEPRECATED']
-	}).items() for k in ks])
+	error_prefixes = dict([(getattr(constants, k), (v, sev)) for v, ks, sev in (
+		('Fatal error' , ['E_CORE_ERROR', 'E_ERROR', 'E_USER_ERROR', 'E_COMPILE_ERROR'], 2),
+		('Warning'     , ['E_CORE_WARNING', 'E_WARNING', 'E_USER_WARNING', 'E_COMPILE_WARNING'], 0),
+		('Parse error' , ['E_PARSE'], 0),
+		('Notice'      , ['E_NOTICE', 'E_USER_NOTICE'], 0),
+		('Strict Standards' , ['E_STRICT'], 0),
+		('Catchable fatal error' , ['E_RECOVERABLE_ERROR'], 1),
+		('Deprecated'  , ['E_DEPRECATED', 'E_USER_DEPRECATED'], 0)
+	) for k in ks])
 	
 	def report_error(self, err_type, msg):
+		prefix, severity = self.error_prefixes.get(err_type, 'Error')
 		if (err_type & self.ERROR_REPORTING) != 0:
-			prefix = self.error_prefixes.get(err_type, 'Error')
 			print "\n%s: %s"%(prefix, msg)
+		if severity > 0:
+			raise StopExecutionError("\n%s: %s"%(prefix, msg))
 			
 	
 	def make_global_scope(self, initial_scope=None):
@@ -61,21 +69,42 @@ class AbstractPhpExecuter(object):
 	def execute(self):
 		if VERBOSE >= VERBOSITY_NOTIFY_RUNNING:
 			print "Running %r\n\n---\n"%self.code_tree
-		return self.visit(self.code_tree, self.globals)
+		try:
+			return self.visit(self.code_tree, self.globals)
+		except StopExecutionError, e:
+			if self.last_node:
+				print self.last_node.prepr()
+				print self.last_scope.prepr()
+		except StandardError, e:
+			if self.last_node:
+				print "Error ocurred in %s (line %s)"%(self.last_node.filename, self.last_node.line_num)
+				print self.last_node.prepr()
+				print self.last_scope.prepr()
+			raise
 		
 	def visit(self, tree_node, local_dict):
+		last_context = self.last_node, self.last_scope
+		self.last_node, self.last_scope  = tree_node, local_dict
 		if VERBOSE >= VERBOSITY_SHOW_VISITED_NODES:
-			print "Visiting %s %r"%(tree_node.name, local_dict)
+			print "Visiting %s (line %s) : %s %s"%(tree_node.filename, tree_node.line_num, tree_node.name, prepr.prepr(local_dict))
 		fn = getattr(self, 'exec_%s'%tree_node.name, None)
 		if fn is not None:
-			return fn(tree_node, local_dict)
+			retval = fn(tree_node, local_dict)
 		else:
-			return self.visit_default(tree_node, local_dict)
+			retval = self.visit_default(tree_node, local_dict)
+		self.last_node, self.last_scope = last_context
+		return retval
 	def visit_default(self, tree_node, local_dict=None):
 		if VERBOSE >= VERBOSITY_SHOW_DEBUG:
 			print tree_node.prepr()
 		raise ExecuteError("Cannot visit node %r, visitor method 'exec_%s' not found.\n"%(tree_node.name, tree_node.name))
 
+	def has_val(self, var_ref):
+		if isinstance(var_ref, VarRef):
+			return var_ref.isset()
+		else:
+			return True
+	
 	def get_val(self, var_ref):
 		if isinstance(var_ref, VarRef):
 			return var_ref.get()
@@ -129,7 +158,9 @@ class PhpExecuter(AbstractPhpExecuter):
 	def exec_bit_and_expression(self, node, local):
 		val = -1
 		for subnode in node.children:
-			val &= int(self.get_val(self.visit(subnode, local)))
+			if subnode.name == '&':
+				subnode = subnode.children[0]
+			val &= coerce.to_int(self.get_val(self.visit(subnode, local)))
 		return val
 	
 	def exec_bit_or_expression(self, node, local):
@@ -215,10 +246,17 @@ class PhpExecuter(AbstractPhpExecuter):
 			token = subnode
 			if token[0] in (parser.TOKEN_STRING, parser.TOKEN_NUMBER):
 				return token[1]
-			elif token[0] in (parser.TOKEN_VARIABLE, parser.TOKEN_IDENTIFIER):
+			elif token[0] == parser.TOKEN_IDENTIFIER:
+				lcaseid = token[1].lower()
+				if lcaseid in primitives:
+					return primitives[lcaseid]
+				else:
+					return VarRef(token[1], self, local)
+			elif token[0] == parser.TOKEN_VARIABLE:
+				# print "Var Ref %r on %r with %r"%(token[1], self, local.prepr())
 				return VarRef(token[1], self, local)
 			elif token[0] == parser.TOKEN_INTERPOLATED_STRING:
-				text = ''.join([str(self.get_val(self.visit(x, local)) if isinstance(x, compiler.TreeNode) else x) for x in token[1]])
+				text = ''.join([coerce.to_string(self.get_val(self.visit(x, local)) if isinstance(x, compiler.TreeNode) else x) for x in token[1]])
 				return text
 		elif isinstance(subnode, compiler.TreeNode):
 			return self.visit(subnode, local)
@@ -240,7 +278,7 @@ class PhpExecuter(AbstractPhpExecuter):
 		if isinstance(subnode, parser.Token):
 			token = subnode
 			if token[0] == (parser.TOKEN_VARIABLE, parser.TOKEN_IDENTIFIER):
-				return VarRef(token[1], self, local)
+				return VarRef(token[1], self, local, '->')
 		else:
 			return self.visit(subnode)
 	
@@ -280,6 +318,7 @@ class PhpExecuter(AbstractPhpExecuter):
 		return factor
 
 	def exec_classdef(self, node, local):
+		print "%"*100
 		cls_name, scls_name, body = node.children
 		if scls_name and not scls_name[1] in local:
 			raise ExecuteError("Undefined superclass %s"%scls_name[1])
@@ -287,7 +326,9 @@ class PhpExecuter(AbstractPhpExecuter):
 		if body:
 			body = self.visit(body, class_context)
 		defined_class = phpclass.PHPClass(cls_name[1], local[scls_name[1]] if scls_name else None, body, class_context, filename=node.filename, line_num=node.line_num)
-		local[defined_class.name] = defined_class
+		#print "class %s defined"%defined_class
+		#print "%"*100
+		self.globals[defined_class.name] = defined_class
 		return defined_class
 	
 	def exec_classdef_block(self, node, local):
@@ -324,7 +365,8 @@ class PhpExecuter(AbstractPhpExecuter):
 		name, params, body = node.children
 		fn = phpfunction.PHPFunction(name[1], None, self.visit(params, local), body, filename=node.filename, line_num=node.line_num)
 		fn.context = self.globals
-		local[name[1]] = fn
+		#print "Defined function ::: %r"%fn
+		self.globals[name[1]] = fn
 		# print local
 		return fn
 
@@ -339,10 +381,12 @@ class PhpExecuter(AbstractPhpExecuter):
 		hint, param, default = node.children
 		if hint:
 			hint = hint[1]
+		has_default = False
 		if default:
+			has_default = True
 			default = self.get_val(self.visit(default, local))
 		param = [hint, param[1]]
-		if default:
+		if has_default:
 			param.append(default)
 		return param
 	
@@ -358,7 +402,7 @@ class PhpExecuter(AbstractPhpExecuter):
 	exec_sym_and_expression = exec_and_expression
 	
 	def exec_or_expression(self, node, local):
-		print node.prepr()
+		# print node.prepr()
 		for i, subnode in enumerate(node.children):
 			print subnode
 			val = self.get_val(self.visit(subnode.children[0] if i else subnode, local))
@@ -404,7 +448,7 @@ class PhpExecuter(AbstractPhpExecuter):
 		return factor
 		
 	def apply_array_indexing_follower(self, factor, follower, local):
-		index = self.visit(follower.children[0], local)
+		index = self.get_val(self.visit(follower.children[0], local))
 		if isinstance(factor, VarRef):
 			return factor[index]
 		else:
@@ -413,25 +457,33 @@ class PhpExecuter(AbstractPhpExecuter):
 		if VERBOSE >= VERBOSITY_SHOW_FN_CALLS:
 			print "Calling %s\n on %s"%(follower.prepr(), factor)
 		
+		func_name=factor
 		factor = self.get_val(factor)
 		if type(factor) is str:
+			func_name = factor
 			if factor in self.globals:
 				factor = self.globals[factor]
 			else:
 				raise ExecuteError("Function %s does not exists", factor)
 		
 		if factor is None:
+			if isinstance(func_name, VarRef):
+				func_name = func_name.qualified_name()
+			func_type = 'method' if '::' in func_name or '->' in func_name else 'function'
+			self.report_error(constants.E_ERROR, 'Call to undefined %s %s() in %s on line %d'%(func_type, func_name, follower.filename, follower.line_num))
 			raise ExecuteError("null is not callable.")
 		elif isinstance(factor, phpbuiltins.builtin.builtin):
 			args = [ self.visit(x, local) for x in follower.children[0].children]
 			if VERBOSE >= VERBOSITY_SHOW_FN_CALLS:
 				print "calling builtin %r with %r"%(factor, args)
-			return factor(args, self, local)
+			retval = factor(args, self, local)
 		else:
 			args = [ self.get_val(self.visit(x, local)) for x in follower.children[0].children]
 			if VERBOSE >= VERBOSITY_SHOW_FN_CALLS:
 				print "calling %r with %r"%(factor, args)
-			return factor(*args, filename=follower.filename, line_num=follower.line_num)
+			retval = factor(*args, filename=follower.filename, line_num=follower.line_num)
+		# print "Return value : ", retval
+		return retval
 
 	def apply_static_member_access_follower(self, factor, follower, local):
 		subnode = follower.children[0].children[0]
@@ -439,19 +491,30 @@ class PhpExecuter(AbstractPhpExecuter):
 			member_name = subnode[1]
 		else:
 			member_name = self.get_val(self.visit(subnode, local))
-		return factor[member_name]
+		if isinstance(factor, VarRef):
+			return factor.getitem(member_name, '::')
+		else:
+			return factor[member_name]
 
 	def exec_add_expression(self, node, local):
-		# print node, local
+		# print node.prepr()
 		value = None
 		for i, child in enumerate(node.children):
 			if i > 0:
 				op = child.name
 				arg = self.get_val(self.visit(child.children[0], local))
 				if op == '.':
-					value = "%s%s"%(value, arg)
+					value = coerce.to_string(value) + coerce.to_string(arg)
 				elif op == '+':
-					value = self.coerce_numeric(value) + self.coerce_numeric(arg)
+					val_is_array = isinstance(value, phparray.PHPArray)
+					arg_is_array = isinstance(arg, phparray.PHPArray)
+					if val_is_array or arg_is_array:
+						if val_is_array and arg_is_array:
+							value = value + arg
+						else:
+							self.report_error(constants.E_ERROR, 'Unsupported operand types in %s on line %d'%(child.filename, child.line_num))
+					else:
+						value = self.coerce_numeric(value) + self.coerce_numeric(arg)
 				elif op == '-':
 					value = self.coerce_numeric(value) - self.coerce_numeric(arg)
 			else:

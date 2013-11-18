@@ -8,7 +8,8 @@ Language-related builtin functions.
 
 from builtin import builtin
 import errors
-
+import sys
+from prepr import prepr
 
 @builtin
 def isset(args, executer, local_dict):
@@ -16,13 +17,38 @@ def isset(args, executer, local_dict):
 	executer.ERROR_REPORTING=0
 	try:
 		for a in args:
-			executer.get_val(a)
-		val_set = True
+			if not executer.has_val(a):
+				val_set = False
+				break;
+		else:
+			val_set = True
 	except:
 		val_set = False
 	
+	# print "isset >> ", val_set
 	executer.ERROR_REPORTING=er
 	return val_set
+
+@builtin
+def empty(args, executer, local_dict):
+	var = executer.get_val(args[0])
+	if not var or var in (0, "", "0"):
+		return False
+	try:
+		if len(var) == 0:
+			return False
+	except:
+		pass
+	return True
+
+@builtin
+def die(args, executer, local):
+	var = executer.get_val(args[0]) if len(args) > 0 else None
+	if type(var) is str:
+		sys.stdout.write(var)
+		var = 0
+		
+	raise errors.StopExecutionError(var)
 
 
 @builtin
@@ -42,7 +68,7 @@ def include_impl(args, executer, local_dict, require=False, once=False):
 	if lf_key not in executer.globals:
 		# print " --> Creating executer.globals[%r]"%lf_key
 		executer.globals[lf_key] = {}
-	
+	print "\n\n%s\n"%("Including file %s"%path)
 	if once and path in executer.globals[lf_key]:
 		# print " -once-> file is already included"
 		pass
@@ -76,6 +102,10 @@ def var_dump_impl(x, depth=0):
 	t = type(x)
 	if x is None:
 		print "%sNULL"%dstr
+	elif x is True:
+		print "%sbool(true)"%dstr
+	elif x is False:
+		print "%sbool(false)"%dstr
 	elif t in (int, long):
 		print "%sint(%d)"%(dstr, x)
 	elif t == str:

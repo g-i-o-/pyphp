@@ -32,13 +32,14 @@ class PHPFunction():
 		call_context = scope({
 			'%func_args' : args,
 			'__FUNCTION__' : self.name
-		}, self.context)
+		}, self.context, name='fncall')
 		
 		
 		executer = call_context['%executer']
 		
 		arglen = len(args)
 		for i, par in enumerate(self.params):
+			# print '\n\n==\n', par, '\n==\n'
 			if i < arglen:
 				val = args[i]
 			elif len(par) > 2:
@@ -56,6 +57,10 @@ class PHPFunction():
 			
 			call_context[par[1]] = val
 			
+		if self.name == 'library':
+			print ('='*20 +'\n')*5
+			print self.body.prepr()
+			print ('='*20 +'\n')*5
 		# print executer
 		# print self.body
 		# print call_context

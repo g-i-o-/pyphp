@@ -1,3 +1,4 @@
+import prepr
 trace_stack=[]
 tcid = 0
 trace_temps = {
@@ -6,11 +7,11 @@ trace_temps = {
 		"%(indent)s} [%(depth)d] // %(name)r"
 	],
 	'args' : [
-		"%(indent)s%(name)s (%(args)r,%(kwargs)r){ [%(depth)d]",
+		"%(indent)s%(name)s (%(args)s,%(kwargs)r){ [%(depth)d]",
 		"%(indent)s} [%(depth)d] // %(name)r"
 	],
 	'tids'  : {
-		"%(indent)s%(name)s (%(args)r,%(kwargs)r){ [%(depth)d] : TPID%(parent_tcid)s -> TCID%(tcid)s",
+		"%(indent)s%(name)s (%(args)s,%(kwargs)r){ [%(depth)d] : TPID%(parent_tcid)s -> TCID%(tcid)s",
 		"%(indent)s} [%(depth)d] // %(name)r : TPID%(parent_tcid)s -> TCID%(tcid)s"
 	}
 }
@@ -29,7 +30,7 @@ def trace(fn, show_tids = False):
 		pdata = {
 			'indent' : "|"*trace_depth,
 			'name'   : fn_name,
-			'args'   : a,
+			'args'   : prepr.prepr(a),
 			'kwargs' : b,
 			'depth'  : trace_depth,
 			'parent_tcid': tpid,

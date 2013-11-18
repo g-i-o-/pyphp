@@ -2,7 +2,16 @@
   Utility functions for implementing PHP's automatic type coercion.
 """
 
-import pyphp.phparrar.PHPArray
+import phparray
+
+def to_string(x):
+	if x is None:
+		return ''
+	elif isinstance(x, phparray.PHPArray):
+		return 'Array'
+	else:
+		return str(x)
+
 
 def to_int(x):
 	if x in (None, True, False):

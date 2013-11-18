@@ -1,10 +1,13 @@
 from builtin import builtin
 import phparray
-
+import coerce
 
 @builtin
 def str_replace(args, executer, local):
-    search, replace, subject = [executer.get_val(x) for x in args[:3]]
+    import prepr
+    search, replace, subject = map(executer.get_val, args[:3])
+    #print '\n='*90
+    #print {'search':search,'replace':replace,'subject':subject}
     if isinstance(search, phparray.PHPArray):
         search = search.values()
     else:
@@ -20,11 +23,17 @@ def str_replace(args, executer, local):
             repl = replace[i]
         else:
             repl=''
+        #print '    =>', {'search':s,'replace':repl,'subject':subject}
         splits = subject.split(s)
         rep_count += len(splits)-1
         subject = repl.join(splits)
+    #print '    ::', repr(subject)
     if len(args) >= 4:
         executer.set_val(args[3], rep_count)
+    #print '\n='*90
     return subject
 
-    
+@builtin
+def strtolower(args, executer, local):
+    val = executer.get_val(args[0])
+    return coerce.to_string(val).lower()

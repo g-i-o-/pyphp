@@ -132,7 +132,7 @@ class Parser:
 	def parse_phpendtag(self):
 		if RE_php_end_tag.match(self.code, self.i):
 			self.i += 2
-			print ParseError()
+			# print ParseError()
 			self.in_code = False
 	
 	def parse_all(self):
@@ -394,9 +394,10 @@ class Parser:
 def parse_file(php_file, state=None):
 	code=None
 	from os.path import abspath
-	with file(abspath(php_file)) as finp:
+	abs_php_file = abspath(php_file)
+	with file(abs_php_file) as finp:
 		code = finp.read()
-	P = Parser(code, php_file)
+	P = Parser(code, abs_php_file)
 	return P.parse()
 
 def parse_php(php_code, state=None):

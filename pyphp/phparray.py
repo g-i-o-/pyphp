@@ -71,6 +71,10 @@ class PHPArray:
 	def __iter__(self):
 		return iter(self.keys)
 	
+	def __add__(self, other):
+		return PHPArray(*[(k, arr.dict[k]) for itsme, arr in [(1, self), (0, other)] for k in arr.keys if itsme or k not in self.dict])
+	
+	
 	def push(self, *items):
 		for item in items:
 			key = self.max_i

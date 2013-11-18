@@ -75,10 +75,10 @@ class TreeNode(object):
 	def __repr__(self):
 		"Returns a string representation of this TreeNode"
 		return "TreeNode<%s>%r"%(self.name, self.children)
-	def prepr(self, depth=0):
-		dstr = "  "*depth
+	def prepr(self, depth=0, dch='  '):
+		dstr = dch*depth
 		return "%sTreeNode<%s, file:%r, line:%s>[\n%s\n%s]"%(
-			dstr, self.name, self.filename, self.line_num, "\n".join([x.prepr(depth+1) if hasattr(x,'prepr') else ("  "*(depth+1) + str(x)) for x in self.children]), dstr
+			dstr, self.name, self.filename, self.line_num, "\n".join([x.prepr(depth+1) if hasattr(x,'prepr') else (dch*(depth+1) + str(x)) for x in self.children]), dstr
 		)
 
 class Compiler(object):
