@@ -64,10 +64,16 @@ class AbstractPhpExecuter(object):
 	def make_global_scope(self, initial_scope=None):
 		if initial_scope is None:
 			initial_scope = {}
-		initial_scope['$_SERVER']=phparray.PHPArray(
-			('SCRIPT_NAME', self.filename)
-		)
-		return scope(initial_scope, {'%executer':self}, phpbuiltins.builtins, name='global')
+		global_scope = {
+			'$_SERVER' : phparray.PHPArray(
+				('SCRIPT_NAME', self.filename)
+			),
+			'$_GET' : phparray.PHPArray(),
+			'$_POST' : phparray.PHPArray(),
+			'$_FILES' : phparray.PHPArray()
+		}
+		global_scope.update(initial_scope)
+		return scope(global_scope, {'%executer':self}, phpbuiltins.builtins, name='global')
 		
 	def __call__(self):
 		return self.execute()
