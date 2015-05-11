@@ -53,7 +53,7 @@ def die(args, executer, local):
 
 @builtin
 def defined(args, executer, local_dict):
-	import phpfunction
+	import pyphp.phpfunction as phpfunction
 	name = executer.get_val(args[0])
 	if name[0] != '$' and name in local_dict:
 		val = local_dict[name]
@@ -76,7 +76,7 @@ def include_impl(args, executer, local_dict, require=False, once=False):
 		import os.path
 		if os.path.exists(path):
 			# print " --> including file %r"%path
-			import compiler
+			import pyphp.compiler as compiler
 			executer.globals[lf_key][path] = True
 			executer.visit(compiler.compile_file(path), local_dict)
 		elif require:
@@ -97,7 +97,7 @@ def include(args, executer, local_dict):
 	include_impl(args, executer, local_dict, False, False)
 
 def var_dump_impl(x, depth=0):
-	import phparray
+	import pyphp.phparray as phparray
 	dstr = "  "*depth
 	t = type(x)
 	if x is None:
