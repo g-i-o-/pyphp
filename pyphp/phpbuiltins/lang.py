@@ -45,7 +45,7 @@ def empty(args, executer, local_dict):
 def die(args, executer, local):
 	var = executer.get_val(args[0]) if len(args) > 0 else None
 	if type(var) is str:
-		sys.stdout.write(var)
+		executer.pipe_stdout.write(var)
 		var = 0
 		
 	raise errors.StopExecutionError(var)

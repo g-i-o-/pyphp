@@ -11,6 +11,7 @@ import coerce
 from varref import VarRef, VarDef
 from errors import ExecuteError, ReturnError, StopExecutionError
 import trace
+import sys
 from scope import scope
 
 
@@ -27,13 +28,18 @@ VERBOSE = VERBOSITY_NONE
 
 class AbstractPhpExecuter(object):
 	
-	def __init__(self, code_tree, initial_scope=None, config=None):
+	def __init__(self, code_tree, initial_scope=None, 
+		stdout=None, stderr=None, stdin=None):
 		self.code_tree = code_tree
 		self.filename = code_tree.filename
 		self.globals = self.make_global_scope(initial_scope)
 		self.ERROR_REPORTING = constants.E_ALL
 		self.last_node  = None
 		self.last_scope = None
+		self.pipe_stdout = stdout if stdout else sys.stdout
+		self.pipe_stderr = stderr if stderr else sys.stderr
+		self.pipe_stdin = stdin if stdin else sys.stdin
+	
 		if VERBOSE >= VERBOSITY_SHOW_VISITED_NODES:
 			trace.trace_obj_calls(self, ['!', 'visit', 'get_val', 'report_error'], 'args')
 	
@@ -131,9 +137,8 @@ class PhpExecuter(AbstractPhpExecuter):
 		return rv
 	
 	def exec_echo(self, node, local):
-		from sys import stdout
 		echo_args = [self.get_val(self.visit(subnode, local)) for subnode in node.children]
-		stdout.write(''.join(echo_args))
+		self.pipe_stdout.write(''.join(echo_args))
 		return 1
 	
 	exec_print_expression = exec_echo
@@ -237,8 +242,7 @@ class PhpExecuter(AbstractPhpExecuter):
 		return val
 
 	def exec_direct_output(self, node, local):
-		from sys import stdout
-		stdout.write(node.children[0])
+		self.pipe_stdout.write(node.children[0])
 		
 	def exec_primitive(self, node, local):
 		subnode = node.children[0]
@@ -533,22 +537,22 @@ class PhpExecuter(AbstractPhpExecuter):
 				return int(m.group(0))
 		return 0
 
-def execute_file(phpfile, global_dict=None):
+def execute_file(phpfile, global_dict=None, **kwargs):
 	if type(phpfile) is str:
 		phpfile = parser.parse_file(phpfile)
 	if isinstance(phpfile, parser.TokenList):
 		phpfile = compiler.compile_php(phpfile)
-	return execute_php(phpfile, global_dict)
+	return execute_php(phpfile, global_dict, **kwargs)
 	
 
-def execute_php(phpcode, global_dict=None):
+def execute_php(phpcode, global_dict=None, **kwargs):
 	if type(phpcode) is str:
 		phpcode = parser.parse_php(phpcode)
 	if isinstance(phpcode, parser.TokenList):
 		phpcode = compiler.compile_php(phpcode)
 	if not isinstance(phpcode, compiler.TreeNode):
 		raise ArgumentError("Given argument is not php code %r"%phpcode)
-	E = PhpExecuter(phpcode, global_dict)
+	E = PhpExecuter(phpcode, global_dict, **kwargs)
 	E.execute()
 	return E
 	
