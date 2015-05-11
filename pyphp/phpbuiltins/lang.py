@@ -96,33 +96,33 @@ def include_once(args, executer, local_dict):
 def include(args, executer, local_dict):
 	include_impl(args, executer, local_dict, False, False)
 
-def var_dump_impl(x, depth=0):
+def var_dump_impl(executer, x, depth=0):
 	import pyphp.phparray as phparray
 	dstr = "  "*depth
 	t = type(x)
-	if x is None:
-		print "%sNULL"%dstr
+	if x is None:        
+		executer.pipe_stdout.write("%sNULL\n"%dstr)
 	elif x is True:
-		print "%sbool(true)"%dstr
+		executer.pipe_stdout.write("%sbool(true)\n"%dstr)
 	elif x is False:
-		print "%sbool(false)"%dstr
+		executer.pipe_stdout.write("%sbool(false)\n"%dstr)
 	elif t in (int, long):
-		print "%sint(%d)"%(dstr, x)
+		executer.pipe_stdout.write("%sint(%d)\n"%(dstr, x))
 	elif t == str:
-		print "%sstring(%d) %r"%(dstr, len(x), x)
+		executer.pipe_stdout.write("%sstring(%d) %r\n"%(dstr, len(x), x))
 	elif isinstance(x, phparray.PHPArray):
-		print "%sarray(%d) {"%(dstr, len(x))
+		executer.pipe_stdout.write("%sarray(%d) {\n"%(dstr, len(x)))
 		for y in x:
-			print "%s  [%r]=>"%(dstr, y)
-			var_dump_impl(x[y], depth + 1)
-		print "%s}"%dstr
+			executer.pipe_stdout.write("%s  [%r]=>\n"%(dstr, y))
+			var_dump_impl(executer, x[y], depth + 1)
+		executer.pipe_stdout.write("%s}\n"%dstr)
 		
 		
 @builtin
 def var_dump(args, executer, local):
 	args = [executer.get_val(a) for a in args]
 	for arg in args:
-		var_dump_impl(arg)
+		var_dump_impl(executer, arg)
 
 @builtin
 def ini_set(args, executer, local):
