@@ -12,7 +12,7 @@ RE_line_comment  = re.compile(r'(#|//)[^\n]*($|\n)')
 #RE_cpp_comment   = re.compile(r'/\*([^*]|\*+[^/])*\*/')
 RE_cpp_comment   = re.compile(r'/\*([^*]|\*)*?\*/')
 RE_whitespace    = re.compile(r'[\s\n]*')
-RE_until_php_tag = re.compile(r'(([^<]|<[^?]|<\?[^p]|<\?p[^h]|<\?ph[^p])*)<\?php')
+RE_until_php_tag = re.compile(r'(([^<]|<[^?]|<\?[^p]|<\?p[^h]|<\?ph[^p])*)<\?php|(([^<]|<)*)')
 RE_php_end_tag   = re.compile(r'\?>')
 RE_float         = re.compile(r'(\d*\.\d+|\d+\.)([eE][+-]?\d+)?')
 RE_hexnumber     = re.compile(r'0x[a-fA-F\d]+')
@@ -398,7 +398,7 @@ class Parser:
 	def read_outcode(self):
 		outcode_m = RE_until_php_tag.match(self.code, self.i)
 		if outcode_m :
-			outcode_text = outcode_m.group(1)
+			outcode_text = outcode_m.group(1) or outcode_m.group(3)
 			if len(outcode_text) > 0:
 				self.tokens.append(Token([TOKEN_DIRECT_OUTPUT, outcode_text], self.filename, self.line_num))
 			self.i += len(outcode_text) + 5
