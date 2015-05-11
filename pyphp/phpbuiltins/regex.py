@@ -1,6 +1,6 @@
 from builtin import builtin
 import constants
-import phparray
+import pyphp.phparray as phparray
 #import re
 
 WARN_NOT_PCRE = False

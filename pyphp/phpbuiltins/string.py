@@ -1,6 +1,6 @@
 from builtin import builtin
-import phparray
-import coerce
+import pyphp.phparray as phparray
+import pyphp.coerce as coerce
 
 @builtin
 def str_replace(args, executer, local):

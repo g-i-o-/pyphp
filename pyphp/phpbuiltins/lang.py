@@ -7,9 +7,9 @@ Language-related builtin functions.
 """
 
 from builtin import builtin
-import errors
+import pyphp.errors
 import sys
-from prepr import prepr
+from pyphp.prepr import prepr
 
 @builtin
 def isset(args, executer, local_dict):

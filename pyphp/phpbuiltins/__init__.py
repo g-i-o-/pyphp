@@ -2,7 +2,7 @@
 Declares a @builtin decorator class for tagging php built-in functions, as well as implements and exports most if not all php built-in functions.
 """
 
-import scope
+import pyphp.scope as scope
 
 import builtin
 import string
