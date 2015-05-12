@@ -12,7 +12,7 @@ RE_line_comment  = re.compile(r'(#|//)[^\n]*($|\n)')
 #RE_cpp_comment   = re.compile(r'/\*([^*]|\*+[^/])*\*/')
 RE_cpp_comment   = re.compile(r'/\*([^*]|\*)*?\*/')
 RE_whitespace    = re.compile(r'[\s\n]*')
-RE_until_php_tag = re.compile(r'(([^<]|<[^?]|<\?[^p]|<\?p[^h]|<\?ph[^p])*)<\?php|(([^<]|<)*)')
+RE_until_php_tag = re.compile(r'(([^<]|<[^?]|<\?[^p]|<\?p[^h]|<\?ph[^p])*)<\?php')
 RE_php_end_tag   = re.compile(r'\?>')
 RE_float         = re.compile(r'(\d*\.\d+|\d+\.)([eE][+-]?\d+)?')
 RE_hexnumber     = re.compile(r'0x[a-fA-F\d]+')
@@ -112,7 +112,7 @@ class Parser:
 		self.in_code = False
 		self.tokens = TokenList()
 		self.tokens
-	
+
 	def parse(self):
 		codelen = len(self.code)
 		php_code = self.code
@@ -128,13 +128,13 @@ class Parser:
 				self.read_outcode()
 			# self.i += 1
 		return self.tokens
-	
+
 	def parse_phpendtag(self):
 		if RE_php_end_tag.match(self.code, self.i):
 			self.i += 2
 			# print ParseError()
 			self.in_code = False
-	
+
 	def parse_all(self):
 		loop=True
 		codelen = len(self.code)
@@ -167,7 +167,7 @@ class Parser:
 			else:
 				raise ParseError("Cannot parse.", self)
 			loop = old_i != self.i
-			
+
 	def parse_op(self):
 		op_m = RE_op_1.match(self.code, self.i)
 		if not op_m:
@@ -180,7 +180,7 @@ class Parser:
 		if len(m_text) > 0:
 			self.tokens.append(Token([m_text], self.filename, self.line_num))
 			self.i += len(m_text)
-			
+
 	def parse_misc(self, tokens = None):
 		m_m = RE_misc.match(self.code, self.i)
 		if not m_m:
@@ -192,7 +192,7 @@ class Parser:
 				tokens = self.tokens
 			tokens.append(Token([m_text], self.filename, self.line_num))
 			self.i += len(m_text)
-			
+
 	def parse_string(self):
 		code = self.code
 		if code[self.i] != "'":
@@ -215,7 +215,7 @@ class Parser:
 		s_text = code[start:self.i]
 		self.tokens.append(Token([TOKEN_STRING, s_text], self.filename, self.line_num))
 		self.i += 1
-			
+
 	def parse_interp_string(self, tokens = None):
 		code = self.code
 		if code[self.i] != '"':
@@ -227,7 +227,7 @@ class Parser:
 		interp=[]
 		clen = len(self.code)
 		interp_count=0
-		
+
 		while self.i < clen:
 			c = self.code[self.i]
 			if c=='"':
@@ -297,7 +297,7 @@ class Parser:
 		else:
 			tokens.append(Token([TOKEN_INTERPOLATED_STRING, text_seq], self.filename, self.line_num))
 		self.i += 1
-	
+
 	def parse_interpolation(self, tokens, allow_identifier=False, allow_number=False):
 		code = self.code
 		if RE_start_variable.match(code, self.i):
@@ -353,17 +353,17 @@ class Parser:
 				tokens = self.tokens
 			tokens.append(Token([TOKEN_VARIABLE, var_text], self.filename, self.line_num))
 			self.i += len(var_text)
-	
+
 	def read_variable(self):
 		var_m = RE_variable.match(self.code, self.i)
 		if not var_m:
 			return
 		else:
 			return var_m.group(0)
-		
+
 	def read_whitespace(self):
 		return RE_whitespace.match(self.code, self.i).group(0)
-	
+
 	def parse_identifier(self, tokens=None):
 		id_m = RE_identifier.match(self.code, self.i)
 		if not id_m:
@@ -384,7 +384,7 @@ class Parser:
 			tokens.append(Token([TOKEN_WS], self.filename, self.line_num))
 			self.i += len(ws_text)
 			self.line_num += len([x for x in ws_text if x == '\n'])
-		
+
 	def parse_comments(self):
 		c_m = RE_line_comment.match(self.code, self.i)
 		if c_m is None:
@@ -394,16 +394,20 @@ class Parser:
 			self.tokens.append(Token([TOKEN_COMMENT, c_text], self.filename, self.line_num))
 			self.line_num += len([x for x in c_m.group(0) if x == '\n'])
 			self.i += len(c_text)
-		
+
 	def read_outcode(self):
 		outcode_m = RE_until_php_tag.match(self.code, self.i)
 		if outcode_m :
-			outcode_text = outcode_m.group(1) or outcode_m.group(3)
+			outcode_text = outcode_m.group(1)
 			if len(outcode_text) > 0:
 				self.tokens.append(Token([TOKEN_DIRECT_OUTPUT, outcode_text], self.filename, self.line_num))
 			self.i += len(outcode_text) + 5
 			# print ParseError("", self)
 			self.line_num += len([x for x in outcode_m.group(0) if x == '\n'])
+		else:
+			outcode_text = self.code[self.i:]
+			self.i = len(self.code)
+			self.tokens.append(Token([TOKEN_DIRECT_OUTPUT, outcode_text], self.filename, self.line_num))
 		self.in_code = True
 
 def parse_file(php_file, state=None):
@@ -479,7 +483,7 @@ def test(*args, **kw):
 		parsed_code = parse_php(code)
 	print
 	print "Parsed Code:\n", '\n'.join([`x` for x in parsed_code])
-	
+
 
 if __name__ == '__main__':
 	import sys
