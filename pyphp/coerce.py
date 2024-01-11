@@ -2,12 +2,12 @@
   Utility functions for implementing PHP's automatic type coercion.
 """
 
-import phparray
+from .phparray import *
 
 def to_string(x):
 	if x is None:
 		return ''
-	elif isinstance(x, phparray.PHPArray):
+	elif isinstance(x, PHPArray):
 		return 'Array'
 	else:
 		return str(x)

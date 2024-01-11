@@ -1,7 +1,7 @@
-import varref
-from prepr import prepr
-import phpfunction
-import errors
+from .varref import *
+from .prepr import prepr
+from .phpfunction import PHPFunction
+from .errors import *
 
 class PHPClass:
 	def __init__(self, name, superclass, body, context, filename=None, line_num=0):
@@ -11,12 +11,12 @@ class PHPClass:
 		self.instance_body = []
 		if body:
 			for member in body:
-				if isinstance(member, phpfunction.PHPFunction):
+				if isinstance(member, PHPFunction):
 					if member.is_static():
 						self.body[member.name] = member
 					else:
 						self.instance_body.append(member);
-				elif isinstance(member, varref.VarDef):
+				elif isinstance(member, VarDef):
 					if member.is_static():
 						self.body[member.name] = member.default
 					else:
@@ -34,11 +34,11 @@ class PHPClass:
 		return key in self.body
 		
 	def __getitem__(self, key):
-		# print "getting %s from %s"%(key, self.name)
+		# print ("getting %s from %s"%(key, self.name))
 		if key in self.body:
 			member = self.body[key]
-			# print "   :: ", prepr(self.body, 7)
-			# print "   => ", prepr(member)
+			# print ("   :: ", prepr(self.body, 7))
+			# print ("   => ", prepr(member))
 			if hasattr(member, 'is_static') and not member.is_static():
 				raise errors.ExecuteError("Fetching non-static member %r from %r."%(member, self))
 			if hasattr(member, 'bind'):
@@ -55,18 +55,18 @@ class PHPClass:
 		# print self
 		# print key
 		# print value
-		# print "@"*160
-		# print "#"*160
-		# print "setting %s in %s to %s"%(key, self.name, value)
-		# print "@"*160
+		# print ("@"*160)
+		# print ("#"*160)
+		# print ("setting %s in %s to %s"%(key, self.name, value))
+		# print ("@"*160)
 		if key not in self.body:
-			# print "!!!!!!!!!!!!!!!"*160
+			# print ("!!!!!!!!!!!!!!!"*160)
 			raise errors.ExecuteError("Cannot set %s on class %s"%(key, self.name))
 		self.body[key] = value
 		
 	def __call__(self, *args):
-		print "Called %s with %r"%(self, args)
-		print qqwweerr
+		print ("Called %s with %r"%(self, args))
+		print (qqwweerr)
 		
 	def __repr__(self):
 		return '<phpclass %r%s>'%(self.name, ' extends %r'%self.superclass.name if self.superclass else '')

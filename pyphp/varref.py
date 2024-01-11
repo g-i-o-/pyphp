@@ -1,4 +1,4 @@
-import phpbuiltins.constants
+from .phpbuiltins import constants
 
 VERBOSITY_NONE = 0
 VERBOSITY_SHOW_DEBUG = 1
@@ -27,16 +27,16 @@ class VarRef(object):
 		
 	def get_context_obj(self, auto_create=False):
 		if VERBOSE >= VERBOSITY_SHOW_DEBUG:
-			print "Getting context of %r"%self
+			print ("Getting context of %r"%self)
 		if isinstance(self.context, VarRef):
-			# print "  -> context is chained to %r"%self.context
+			# print ("  -> context is chained to %r"%self.context)
 			ctx_name, ctx = self.context.get_context_obj()
 			if self.context.name in ctx:
 				ctx = ctx[self.context.name]
 			elif auto_create:
-				# print "Context does not exists in parent's context %r. Auto-creating %r"%(ctx, self.context.name)
+				# print ("Context does not exists in parent's context %r. Auto-creating %r"%(ctx, self.context.name))
 				ctx[self.context.name] = {}
-				# print "  --> %r"%ctx
+				# print ("  --> %r"%ctx)
 				ctx = ctx[self.context.name]
 			else:
 				raise IndexError("Cannot get context of %r."%self)
@@ -44,14 +44,14 @@ class VarRef(object):
 		elif isinstance(self.context, VarDef):
 			return self.context.name, self.context.default
 		else:
-			# print "  -> explicitly stated as %r"%self.context
+			# print ("  -> explicitly stated as %r"%self.context)
 			return "<implicit>", self.context
 		
 	def get(self):
 		context_name, context = self.get_context_obj(True)
-		# print "varref context %r[%r]"%(context, self.name)
+		# print ("varref context %r[%r]"%(context, self.name))
 		if self.name not in context:
-			self.executer.report_error( phpbuiltins.constants.E_WARNING, "%s doesn't exist"%(self.qualified_name()) )
+			self.executer.report_error( constants.E_WARNING, "%s doesn't exist"%(self.qualified_name()) )
 			return None
 		value = context[self.name]
 		if isinstance(value, VarDef):
@@ -60,21 +60,21 @@ class VarRef(object):
 		
 	def set(self, value):
 		context_name, context = self.get_context_obj(True)
-		# print "%r[%r] = %r"%(context, self.name, value)
+		# print ("%r[%r] = %r"%(context, self.name, value))
 		context[self.name] = value
 		
 	def isset(self):
 		import prepr
 		try:
-			#print "Fetching varref context..."
+			#print ("Fetching varref context...")
 			context_name, context = self.get_context_obj(False)
-			#print "  => ", context
-		except IndexError, ie:
-			#print "  => context not found!!!"
+			#print ("  => ", context)
+		except IndexError as ie:
+			#print ("  => context not found!!!")
 			return False
-		#print "  => var %r in context ::"%self.name, self.name in context
+		#print ("  => var %r in context ::"%self.name, self.name in context)
 		if self.name not in context:
-			#print "  => var %r not in context!!"%self.name
+			#print ("  => var %r not in context!!"%self.name)
 			return False
 		return True;
 	
@@ -94,7 +94,7 @@ class VarRef(object):
 	
 
 	def qualified_name(self):
-		import phpclass
+		from .phpclass import PHPClass
 		name_parts = []
 		if self.particle == '[':
 			name_parts.append(']')
@@ -122,7 +122,7 @@ class VarRef(object):
 					name_parts.append(ctx.name)
 				name_parts.append(ctx.particle)
 				ctx = ctx.context
-			elif isinstance(ctx, phpclass.PHPClass):
+			elif isinstance(ctx, PHPClass):
 				name_parts.append(ctx.name)
 				ctx = None
 			else:

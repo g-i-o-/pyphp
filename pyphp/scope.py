@@ -1,4 +1,4 @@
-from prepr import prepr
+from .prepr import prepr
 	
 class scope(object):
 	"Represents a scope, a context in which variables and functions are defined and bound to."

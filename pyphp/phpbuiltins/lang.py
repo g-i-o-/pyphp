@@ -6,7 +6,7 @@ Language-related builtin functions.
    error_reporting
 """
 
-from builtin import builtin
+from .builtin import builtin
 import pyphp.errors
 import sys
 from pyphp.prepr import prepr
@@ -68,7 +68,7 @@ def include_impl(args, executer, local_dict, require=False, once=False):
 	if lf_key not in executer.globals:
 		# print " --> Creating executer.globals[%r]"%lf_key
 		executer.globals[lf_key] = {}
-	print "\n\n%s\n"%("Including file %s"%path)
+	print ("\n\n%s\n"%("Including file %s"%path))
 	if once and path in executer.globals[lf_key]:
 		# print " -once-> file is already included"
 		pass

@@ -71,7 +71,7 @@ TOKEN_COMMENT       = "COMMENT"
 TOKEN_DIRECT_OUTPUT = "DIRECT_OUTPUT"
 TOKEN_EOF           = "EOF"
 
-class ParseError(StandardError):
+class ParseError(Exception):
 	def __init__(self, message="", parser=None):
 		msg=message
 		if parser:
@@ -123,7 +123,7 @@ class Parser:
 				if VERBOSE >= VERBOSITY_UNPARSEABLE_CHARS:
 					if self.i < len(self.code):
 						c=php_code[self.i]
-						print ParseError("", self)
+						print (ParseError("", self))
 			else:
 				self.read_outcode()
 			# self.i += 1
@@ -184,7 +184,7 @@ class Parser:
 	def parse_misc(self, tokens = None):
 		m_m = RE_misc.match(self.code, self.i)
 		if not m_m:
-			print ParseError("cant parse misc")
+			print (ParseError("cant parse misc"))
 			return
 		m_text = m_m.group(0)
 		if len(m_text) > 0:
@@ -210,8 +210,8 @@ class Parser:
 				self.i+=1
 		else:
 			raise ParseError("Expected en of string, not end of file.", self)
-		print ParseError('', self)
-		print [start, self.i], code[start-1:self.i+1]
+		print (ParseError('', self))
+		print ([start, self.i], code[start-1:self.i+1])
 		s_text = code[start:self.i]
 		self.tokens.append(Token([TOKEN_STRING, s_text], self.filename, self.line_num))
 		self.i += 1
@@ -414,7 +414,7 @@ def parse_file(php_file, state=None):
 	code=None
 	from os.path import abspath
 	abs_php_file = abspath(php_file)
-	with file(abs_php_file) as finp:
+	with open(abs_php_file) as finp:
 		code = finp.read()
 	P = Parser(code, abs_php_file)
 	return P.parse()
@@ -470,19 +470,19 @@ def test(*args, **kw):
 		kw['code'] = args[0]
 	if 'filename' in kw:
 		filename = kw['filename']
-		print "parsing file : %r"%filename
+		print ("parsing file : %r"%filename)
 		from os.path import abspath
 		with file(abspath(filename)) as finp:
-			print finp.read()
-		print "----"
+			print (finp.read())
+		print ("----")
 		parsed_code = parse_file(filename)
 	elif 'code' in kw:
 		code = kw['code']
-		print "parsing php code :\n%s"%code
-		print "----"
+		print ("parsing php code :\n%s"%code)
+		print ("----")
 		parsed_code = parse_php(code)
 	print
-	print "Parsed Code:\n", '\n'.join([`x` for x in parsed_code])
+	print ("Parsed Code:\n", '\n'.join([str(x) for x in parsed_code]))
 
 
 if __name__ == '__main__':

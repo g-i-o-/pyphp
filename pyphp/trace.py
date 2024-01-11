@@ -36,9 +36,9 @@ def trace(fn, show_tids = False):
 			'parent_tcid': tpid,
 			'tcid'   : cur_tcid
 		}
-		print pre_tt % pdata
+		print (pre_tt % pdata)
 		rv = fn(*a,**b)
-		print post_tt % pdata
+		print (post_tt % pdata)
 		trace_stack.pop()
 		return rv
 	return tfn

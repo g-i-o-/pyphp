@@ -1,4 +1,4 @@
-from builtin import builtin
+from .builtin import builtin
 import pyphp.phparray as phparray
 import pyphp.coerce as coerce
 
