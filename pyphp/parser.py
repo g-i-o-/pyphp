@@ -481,7 +481,7 @@ def test(*args, **kw):
 		print ("parsing php code :\n%s"%code)
 		print ("----")
 		parsed_code = parse_php(code)
-	print
+	print ()
 	print ("Parsed Code:\n", '\n'.join([str(x) for x in parsed_code]))
 
 
