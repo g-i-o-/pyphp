@@ -87,7 +87,7 @@ class ParseError(Exception):
 			arrowline = " "*(i - linestart_idx + 3*len([x for x in errline if x == '\t'])) + '^'
 			errline   = ''.join(["    " if x == '\t' else x for x in errline])
 			msg = "File \"%s\", line %s : %s\n%s\n%s"%(filename, line, message, errline, arrowline)
-		super(StandardError, self).__init__(msg)
+		super(Exception, self).__init__(msg)
 
 class TokenList(list):
 	pass
