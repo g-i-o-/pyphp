@@ -27,7 +27,7 @@ else:
     def warn(executer):
         global WARNING_GIVEN
         if not WARNING_GIVEN:
-            executer.report_error(constants.E_CORE_WARNING, "Python's re module is not completely compatible to PCRE.")
+            executer.report_error(E_CORE_WARNING, "Python's re module is not completely compatible to PCRE.")
             WARNING_GIVEN=True
         
     def parse_regex(pat):

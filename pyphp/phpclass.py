@@ -22,7 +22,7 @@ class PHPClass:
 					else:
 						self.instance_body.append(member);
 				else:
-					raise errors.ExecuteError("Invalid class member %r in definition of class %s"%(member, self.name))
+					raise ExecuteError("Invalid class member %r in definition of class %s"%(member, self.name))
 		self.context = context
 		self.context['self'] = self
 		self.context['parent'] = superclass
@@ -40,7 +40,7 @@ class PHPClass:
 			# print ("   :: ", prepr(self.body, 7))
 			# print ("   => ", prepr(member))
 			if hasattr(member, 'is_static') and not member.is_static():
-				raise errors.ExecuteError("Fetching non-static member %r from %r."%(member, self))
+				raise ExecuteError("Fetching non-static member %r from %r."%(member, self))
 			if hasattr(member, 'bind'):
 				return member.bind(self.context)
 			else:
@@ -61,7 +61,7 @@ class PHPClass:
 		# print ("@"*160)
 		if key not in self.body:
 			# print ("!!!!!!!!!!!!!!!"*160)
-			raise errors.ExecuteError("Cannot set %s on class %s"%(key, self.name))
+			raise ExecuteError("Cannot set %s on class %s"%(key, self.name))
 		self.body[key] = value
 		
 	def __call__(self, *args):

@@ -4,7 +4,7 @@ import pyphp.coerce as coerce
 
 @builtin
 def str_replace(args, executer, local):
-    import prepr
+    from pyphp.prepr import prepr
     search, replace, subject = map(executer.get_val, args[:3])
     #print '\n='*90
     #print {'search':search,'replace':replace,'subject':subject}
