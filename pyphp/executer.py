@@ -8,7 +8,7 @@ from .phparray import *
 from .coerce import *
 from .varref import VarRef, VarDef
 from .errors import ExecuteError, ReturnError, StopExecutionError
-import trace
+from .trace import *
 import sys
 from .scope import scope
 
@@ -39,7 +39,7 @@ class AbstractPhpExecuter(object):
 		self.pipe_stdin = stdin if stdin else sys.stdin
 	
 		if VERBOSE >= VERBOSITY_SHOW_VISITED_NODES:
-			trace.trace_obj_calls(self, ['!', 'visit', 'get_val', 'report_error'], 'args')
+			trace_obj_calls(self, ['!', 'visit', 'get_val', 'report_error'], 'args')
 	
 	error_prefixes = dict([(getattr(constants, k), (v, sev)) for v, ks, sev in (
 		('Fatal error' , ['E_CORE_ERROR', 'E_ERROR', 'E_USER_ERROR', 'E_COMPILE_ERROR'], 2),
@@ -96,7 +96,7 @@ class AbstractPhpExecuter(object):
 		last_context = self.last_node, self.last_scope
 		self.last_node, self.last_scope  = tree_node, local_dict
 		if VERBOSE >= VERBOSITY_SHOW_VISITED_NODES:
-			print ("Visiting %s (line %s) : %s %s"%(tree_node.filename, tree_node.line_num, tree_node.name, prepr.prepr(local_dict)))
+			print ("Visiting %s (line %s) : %s %s"%(tree_node.filename, tree_node.line_num, tree_node.name, prepr(local_dict)))
 		fn = getattr(self, 'exec_%s'%tree_node.name, None)
 		if fn is not None:
 			retval = fn(tree_node, local_dict)

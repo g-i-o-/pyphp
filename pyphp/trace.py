@@ -1,4 +1,4 @@
-import prepr
+from .prepr import *
 trace_stack=[]
 tcid = 0
 trace_temps = {
@@ -30,7 +30,7 @@ def trace(fn, show_tids = False):
 		pdata = {
 			'indent' : "|"*trace_depth,
 			'name'   : fn_name,
-			'args'   : prepr.prepr(a),
+			'args'   : prepr(a),
 			'kwargs' : b,
 			'depth'  : trace_depth,
 			'parent_tcid': tpid,

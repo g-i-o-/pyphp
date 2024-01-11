@@ -97,8 +97,8 @@ class Compiler(object):
 		self.indent = 0
 		
 		if VERBOSE >= VERBOSITY_TRACE_GRAMMAR:
-			import trace
-			trace.trace_obj_calls(self, ['!', 'cur_filename_line', 'cur_token', 'compile', 'compile_php_file', 'skip_comments_and_ws', 'skip_to_next'])
+			from .trace import trace_obj_calls
+			trace_obj_calls(self, ['!', 'cur_filename_line', 'cur_token', 'compile', 'compile_php_file', 'skip_comments_and_ws', 'skip_to_next'])
 		
 		#for i in dir(self):
 		#	at = getattr(self, i)
