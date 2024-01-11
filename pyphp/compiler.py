@@ -881,7 +881,7 @@ def test(*args, **kw):
 	if 'filename' in kw:
 		filename = kw['filename']
 		print ("parsing file : %r"%filename)
-		with file(filename) as finp:
+		with open(filename) as finp:
 			print (finp.read())
 		print ("----")
 		php_code = parse_file(filename)

@@ -472,7 +472,7 @@ def test(*args, **kw):
 		filename = kw['filename']
 		print ("parsing file : %r"%filename)
 		from os.path import abspath
-		with file(abspath(filename)) as finp:
+		with open(abspath(filename)) as finp:
 			print (finp.read())
 		print ("----")
 		parsed_code = parse_file(filename)
