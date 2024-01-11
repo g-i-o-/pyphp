@@ -35,7 +35,7 @@ if __name__ == '__main__':
 				elif key in ('compile', 'run', 'parse'):
 					action = key
 				else:
-					print "Unknown option %s"%arg
+					print ("Unknown option %s"%arg)
 			else:
 				if len(phpargv) == 0:
 					phpfile = arg
@@ -50,19 +50,19 @@ if __name__ == '__main__':
 		if action == 'run':
 			php_executer = executer.execute_file(phpfile, init_scope)
 			if show_globals:
-				print "[ended]\n-- globals --"
+				print ("[ended]\n-- globals --")
 				for i in executer.globals.dict:
-					print "%-14s  ->  %r"%(i, executer.globals[i])
+					print ("%-14s  ->  %r"%(i, executer.globals[i]))
 		elif action == 'compile':
 			code_tree = compiler.compile_file(phpfile)
-			print "[ended compilation]\n-- code tree --"
-			print code_tree.prepr()
+			print ("[ended compilation]\n-- code tree --")
+			print (code_tree.prepr())
 		elif action == 'parse':
 			tokens = parser.parse_file(phpfile)
-			print "[ended parsing]\n-- tokens --"
-			print '\n'.join([repr(x) for x in tokens])
+			print ("[ended parsing]\n-- tokens --")
+			print ('\n'.join([repr(x) for x in tokens]))
 		
 	else :
-		print "# No file to %s!"%action
-		print USAGE
+		print ("# No file to %s!"%action)
+		print (USAGE)
 		

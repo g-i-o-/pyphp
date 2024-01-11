@@ -1,7 +1,7 @@
-import errors
-import executer
-from phpbuiltins import constants
-from scope import scope
+from .errors import *
+from .executer import *
+from .phpbuiltins import constants
+from .scope import scope
 
 
 class PHPFunction():
@@ -28,7 +28,7 @@ class PHPFunction():
 		caller_line_num = kwargs['line_num'] if 'line_num' in kwargs else None
 		
 		
-		# print "Calling %r with %r"%(self, args)
+		# print ("Calling %r with %r"%(self, args))
 		call_context = scope({
 			'%func_args' : args,
 			'__FUNCTION__' : self.name
@@ -59,7 +59,7 @@ class PHPFunction():
 			
 		if self.name == 'library':
 			print ('='*20 +'\n')*5
-			print self.body.prepr()
+			print (self.body.prepr())
 			print ('='*20 +'\n')*5
 		# print executer
 		# print self.body
@@ -67,7 +67,7 @@ class PHPFunction():
 		
 		try:
 			return executer.visit(self.body, call_context)
-		except errors.ReturnError, rerr:
+		except errors.ReturnError as rerr:
 			return rerr.retval
 		
 		# raise errors.ExecuteError("Can't execute yet.")

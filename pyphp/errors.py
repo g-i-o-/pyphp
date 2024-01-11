@@ -1,4 +1,4 @@
-class ExecuteError(StandardError):
+class ExecuteError(Exception):
 	pass
 
 class StopExecutionError(ExecuteError):
@@ -6,7 +6,7 @@ class StopExecutionError(ExecuteError):
 		self.exitval = exitval
 
 
-class ReturnError(StandardError):
+class ReturnError(Exception):
 	def __init__(self, retval):
 		self.retval = retval
 	

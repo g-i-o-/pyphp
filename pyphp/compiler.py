@@ -1,4 +1,4 @@
-import parser
+from .parser import *
 import weakref
 
 # Verbosity levels for this module
@@ -54,7 +54,7 @@ OPERATORS_ASSIGNMENT = ('=', '+=', '-=', '*=', '/=', '.=', '%=', '&=', '|=', '^=
 RIGHT_ASSOCIATIVE = True
 LEFT_ASSOCIATIVE  = False
 
-class CompileError(StandardError):
+class CompileError(Exception):
 	"An Error ocurring during the compilation phase"
 	pass
 
@@ -115,12 +115,12 @@ class Compiler(object):
 			tok = self.tokens[self.i]
 		elif len(self.tokens) > 0:
 			ltok = self.tokens[-1]
-			tok = parser.Token((parser.TOKEN_EOF,), ltok.filename, ltok.line_num)
+			tok = Token((TOKEN_EOF,), ltok.filename, ltok.line_num)
 		else:
-			tok = parser.Token((parser.TOKEN_EOF,), None, -1)
+			tok = Token((TOKEN_EOF,), None, -1)
 			
 		if can_verbose and VERBOSE >= VERBOSITY_SHOW_READ_TOKENS:
-			print "%s%s"%("  "*self.indent, tok)
+			print ("%s%s"%("  "*self.indent, tok))
 		return tok
 	def skip_to_next(self):
 		"Advances to the next non-ws, non-comment token."
@@ -129,9 +129,9 @@ class Compiler(object):
 	def skip_comments_and_ws(self):
 		"Consumes tokens untils a non-ws, non-comment token is found."
 		tok = self.cur_token()
-		while self.i < len(self.tokens) and tok[0] in (parser.TOKEN_COMMENT, parser.TOKEN_WS):
+		while self.i < len(self.tokens) and tok[0] in (TOKEN_COMMENT, TOKEN_WS):
 			if VERBOSE >= VERBOSITY_SHOW_SKIPPED_WS:
-				print "Skipping ws : %r"%tok
+				print ("Skipping ws : %r"%tok)
 			self.i += 1
 			tok = self.cur_token()
 	def expect_token(self, *parts):
@@ -193,8 +193,8 @@ class Compiler(object):
 		token = self.cur_token()
 		stmt = None
 		if VERBOSE >= VERBOSITY_SHOW_READ_TOKENS:
-			print "compiling stmt, %s"%token 
-		if token[0] == parser.TOKEN_IDENTIFIER:
+			print ("compiling stmt, %s"%token) 
+		if token[0] == TOKEN_IDENTIFIER:
 			ident_lc_name = token[1].lower();
 			if ident_lc_name == KEYWORD_DEFINE:
 				stmt = self.compile_define_stmt()
@@ -220,7 +220,7 @@ class Compiler(object):
 				stmt = self.compile_try_stmt()
 			elif ident_lc_name == KEYWORD_ECHO:
 				stmt = self.compile_echo_stmt()
-		elif token[0] == parser.TOKEN_DIRECT_OUTPUT:
+		elif token[0] == TOKEN_DIRECT_OUTPUT:
 			out_str = token[1]
 			if len(out_str) > 0 and out_str[0] == '\n':
 				out_str = out_str[1:]
@@ -238,11 +238,11 @@ class Compiler(object):
 			raise CompileError("File:%s, line:%s, Expected stmt instead of %s"%(token.filename, token.line_num, ' '.join([str(x) for x in token])))
 		
 		if VERBOSE >= VERBOSITY_SHOW_COMPILED_STATEMENTS:
-			print "@@ %s"%stmt.prepr()
+			print ("@@ %s"%stmt.prepr())
 		return stmt
 	def compile_echo_stmt(self):         # echo_stmt          => ECHO expression_list
 		fn, ln = self.cur_filename_line()
-		self.expect_token(parser.TOKEN_IDENTIFIER, KEYWORD_ECHO)
+		self.expect_token(TOKEN_IDENTIFIER, KEYWORD_ECHO)
 		self.skip_to_next()
 		args = [];
 		if self.cur_token()[0] != ';':
@@ -265,7 +265,7 @@ class Compiler(object):
 		self.skip_to_next()
 		return TreeNode('stmt_block', stmts, fn, ln)
 	def compile_define_stmt(self):       #  define_stmt       => 'define' argument_list ';'
-		self.expect_token(parser.TOKEN_IDENTIFIER, KEYWORD_DEFINE)
+		self.expect_token(TOKEN_IDENTIFIER, KEYWORD_DEFINE)
 		self.skip_to_next()
 		argument_list = self.compile_argument_list()
 		if len(argument_list.children) != 2:
@@ -276,7 +276,7 @@ class Compiler(object):
 	def compile_return_stmt(self):       #  return_stmt       => RETURN expression ';'
 		fn, ln = self.cur_filename_line()
 		seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_RETURN),
+			(TOKEN_IDENTIFIER, KEYWORD_RETURN),
 			self.compile_expression,
 			(';', )
 		)
@@ -285,7 +285,7 @@ class Compiler(object):
 	def compile_switch_stmt(self):       # switch_stmt    => SWITCH '(' expression_list ')' '{' switch_case+ [switch_default]'}'
 		fn, ln = self.cur_filename_line()
 		seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_SWITCH),
+			(TOKEN_IDENTIFIER, KEYWORD_SWITCH),
 			('(', ),
 			self.compile_expression_list,
 			(')', ),
@@ -294,7 +294,7 @@ class Compiler(object):
 		cases = [seq[2]]
 		tok = self.cur_token()
 		while tok[0] != '}':
-			self.expect_token(parser.TOKEN_IDENTIFIER)
+			self.expect_token(TOKEN_IDENTIFIER)
 			if tok[1] == KEYWORD_CASE:
 				cases.append(self.compile_switch_case())
 			elif tok[1] == KEYWORD_DEFAULT:
@@ -308,13 +308,13 @@ class Compiler(object):
 	def compile_switch_case(self):       # switch_case    => CASE expression ':' [stmt]*
 		fn, ln = self.cur_filename_line()
 		seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_CASE),
+			(TOKEN_IDENTIFIER, KEYWORD_CASE),
 			self.compile_expression_list,
 			(':', )
 		)
 		tok = self.cur_token()
 		statements = []
-		while not (tok[0] == '}' or (tok[0] == parser.TOKEN_IDENTIFIER and tok[1] in (KEYWORD_CASE, KEYWORD_DEFAULT))):
+		while not (tok[0] == '}' or (tok[0] == TOKEN_IDENTIFIER and tok[1] in (KEYWORD_CASE, KEYWORD_DEFAULT))):
 			statements.append(self.compile_stmt())
 			tok = self.cur_token()
 		return TreeNode('switch_case', [seq[1], statements], fn, ln)
@@ -322,12 +322,12 @@ class Compiler(object):
 	def compile_switch_default(self):    # switch_default => DEFAULT ':' [stmt]*
 		fn, ln = self.cur_filename_line()
 		seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_DEFAULT),
+			(TOKEN_IDENTIFIER, KEYWORD_DEFAULT),
 			(':', )
 		)
 		tok = self.cur_token()
 		statements = []
-		while not (tok[0] == '}' or (tok[0] == parser.TOKEN_IDENTIFIER and tok[1] in (KEYWORD_CASE, KEYWORD_DEFAULT))):
+		while not (tok[0] == '}' or (tok[0] == TOKEN_IDENTIFIER and tok[1] in (KEYWORD_CASE, KEYWORD_DEFAULT))):
 			statements.append(self.compile_stmt())
 			tok = self.cur_token()
 		return TreeNode('switch_default', statements, fn, ln)
@@ -335,7 +335,7 @@ class Compiler(object):
 	def compile_throw_stmt(self):        # throw_stmt      => THROW expression_list ';'
 		fn, ln = self.cur_filename_line()
 		seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_THROW),
+			(TOKEN_IDENTIFIER, KEYWORD_THROW),
 			self.compile_expression_list,
 			(';', )
 		)
@@ -344,16 +344,16 @@ class Compiler(object):
 	def compile_try_stmt(self):          # try_stmt        => TRY stmt_block [CATCH '(' parameter ')' stmt_block]* [FINALLY stmt_block]
 		fn, ln = self.cur_filename_line()
 		try_seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_TRY),
+			(TOKEN_IDENTIFIER, KEYWORD_TRY),
 			self.compile_stmt_block
 		)
 		catch_blocks = []
 		tok = self.cur_token()
-		while tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_CATCH:
+		while tok[0] == TOKEN_IDENTIFIER and tok[1] == KEYWORD_CATCH:
 			catch_blocks.append(self.compile_catch_block())
 			tok = self.cur_token()
 		
-		finally_block = self.compile_finally_block() if tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_FINALLY else None
+		finally_block = self.compile_finally_block() if tok[0] == TOKEN_IDENTIFIER and tok[1] == KEYWORD_FINALLY else None
 		
 		if len(catch_blocks) == 0 and finally_block is None:
 			raise CompileError('expected catch or finally in try statement.');
@@ -363,7 +363,7 @@ class Compiler(object):
 	def compile_catch_block(self):       # catch_block     => CATCH '(' parameter ')' stmt_block
 		fn, ln = self.cur_filename_line()
 		catch_seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_CATCH),
+			(TOKEN_IDENTIFIER, KEYWORD_CATCH),
 			('(', ),
 			self.compile_parameter
 			(')', ),
@@ -374,7 +374,7 @@ class Compiler(object):
 	def compile_finally_block(self):    # finally_block   => FINALLY stmt_block
 		fn, ln = self.cur_filename_line()
 		catch_seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_FINALLY),
+			(TOKEN_IDENTIFIER, KEYWORD_FINALLY),
 			self.compile_stmt_block
 		)
 		return TreeNode('finally_block', [seq[1]], fn, ln)
@@ -383,7 +383,7 @@ class Compiler(object):
 	def compile_for_stmt    (self):              #  for_stmt        => FOR '(' expression_list ';' expression_list ';' expression_list ')' stmt_block
 		fn, ln = self.cur_filename_line()
 		seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_FOR),
+			(TOKEN_IDENTIFIER, KEYWORD_FOR),
 			('(', ),
 			self.compile_expression_list,
 			(';', ),
@@ -398,7 +398,7 @@ class Compiler(object):
 	def compile_while_stmt(self):       # while_stmt      => WHILE '(' expression_list ')' stmt_block
 		fn, ln = self.cur_filename_line()
 		seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_WHILE),
+			(TOKEN_IDENTIFIER, KEYWORD_WHILE),
 			('(', ),
 			self.compile_expression_list,
 			(')', ),
@@ -409,10 +409,10 @@ class Compiler(object):
 	def compile_foreach_stmt(self):              #  foreach_stmt    => FOREACH '(' VARIABLE AS VARIABLE [ '=>' VARIABLE ] ')' stmt_block
 		fn, ln = self.cur_filename_line()
 		seq = self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_FOREACH),
+			(TOKEN_IDENTIFIER, KEYWORD_FOREACH),
 			('(', ),
 			self.compile_followed_primitive,
-			(parser.TOKEN_IDENTIFIER, 'as'),
+			(TOKEN_IDENTIFIER, 'as'),
 			self.compile_followed_primitive
 		)
 		seq2 = None
@@ -462,17 +462,17 @@ class Compiler(object):
 		return self.compile_print_expression()
 	def compile_print_expression      (self):         #  expression                  =>    [PRINT] or_expression
 		tok = self.cur_token()
-		if tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_PRINT:
+		if tok[0] == TOKEN_IDENTIFIER and tok[1] == KEYWORD_PRINT:
 			self.skip_to_next()
 			return TreeNode('print_expression', [self.compile_or_expression()], tok.filename, tok.line_num)
 		else:
 			return self.compile_or_expression()
 	def compile_or_expression         (self):         #  or_expression               =>    xor_expression [OR xor_expression]*
-		return self.compile_delimited_var_list("or_expression", self.compile_xor_expression, [parser.TOKEN_IDENTIFIER, 'or'])
+		return self.compile_delimited_var_list("or_expression", self.compile_xor_expression, [TOKEN_IDENTIFIER, 'or'])
 	def compile_xor_expression        (self):         #  xor_expression              =>    and_expression [XOR and_expression]*
-		return self.compile_delimited_var_list("xor_expression", self.compile_and_expression, [parser.TOKEN_IDENTIFIER, 'xor'])
+		return self.compile_delimited_var_list("xor_expression", self.compile_and_expression, [TOKEN_IDENTIFIER, 'xor'])
 	def compile_and_expression        (self):         #  and_expression              =>    assignment_expression [AND assignment_expression]*
-		return self.compile_delimited_var_list("and_expression", self.compile_assignment_expression, [parser.TOKEN_IDENTIFIER, 'and'])
+		return self.compile_delimited_var_list("and_expression", self.compile_assignment_expression, [TOKEN_IDENTIFIER, 'and'])
 	def compile_assignment_expression (self):         #  assignment_expression       =>    conditional_expression [assignment_op conditional_expression]
 		return self.compile_delimited_var_list("assignment_expression", self.compile_conditional_expression, OPERATORS_ASSIGNMENT, LEFT_ASSOCIATIVE)
 	def compile_conditional_expression(self):         #  conditional_expression      =>    sym_or_expression ['?' sym_or_expression ':' sym_or_expression ]
@@ -531,7 +531,7 @@ class Compiler(object):
 	def compile_factor(self):                 #  factor                 => [unary_operator]* followed_primitive
 		args=[]
 		unary_ops = []
-		while self.cur_token()[0] in parser.TOKEN_UNARY_OP:
+		while self.cur_token()[0] in TOKEN_UNARY_OP:
 			unary_ops.append(self.cur_token())
 			self.skip_to_next()
 		if len(unary_ops) > 0:
@@ -546,7 +546,7 @@ class Compiler(object):
 			try:
 				follower = self.compile_primitive_follower()
 				args.append(follower)
-			except CompileError, ce:
+			except CompileError as ce:
 				break
 		return TreeNode("followed_primitive", args, args[0].filename, args[0].line_num) if len(args) > 1 else args[0]
 
@@ -558,35 +558,35 @@ class Compiler(object):
 			ref_type = True
 			self.skip_to_next()
 			tok2=self.cur_token()
-			if tok2[0] == parser.TOKEN_VARIABLE:
+			if tok2[0] == TOKEN_VARIABLE:
 				self.skip_to_next()
 				return TreeNode("primitive", [tok2, tok], tok.filename, tok.line_num)
 			else:
 				raise CompileError("Expected variable after & token");
 		else:
 			ref_type = True
-		if tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_NEW:
+		if tok[0] == TOKEN_IDENTIFIER and tok[1] == KEYWORD_NEW:
 			seq = self.expect_sequence(
-				(parser.TOKEN_IDENTIFIER, KEYWORD_NEW),
+				(TOKEN_IDENTIFIER, KEYWORD_NEW),
 				self.compile_typedef,
 				self.compile_argument_list
 			)
 			return TreeNode("primitive", [tok, seq[1], seq[2]], tok.filename, tok.line_num)
-		elif tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_ARRAY:
+		elif tok[0] == TOKEN_IDENTIFIER and tok[1] == KEYWORD_ARRAY:
 			return TreeNode("primitive", [self.compile_array_literal()], tok.filename, tok.line_num)
-		elif tok[0] in (parser.TOKEN_STRING, parser.TOKEN_NUMBER, parser.TOKEN_IDENTIFIER, parser.TOKEN_VARIABLE):
+		elif tok[0] in (TOKEN_STRING, TOKEN_NUMBER, TOKEN_IDENTIFIER, TOKEN_VARIABLE):
 			self.skip_to_next()
 			return TreeNode("primitive", [tok], tok.filename, tok.line_num)
-		elif tok[0] == parser.TOKEN_INTERPOLATED_STRING:
+		elif tok[0] == TOKEN_INTERPOLATED_STRING:
 			interpolations = tok[1]
 			for i, interp in enumerate(interpolations):
-				if isinstance(interp, parser.TokenList):
+				if isinstance(interp, TokenList):
 					if VERBOSE > VERBOSITY_NONE:
-						print "=================================================="
+						print ("==================================================")
 					C = Compiler(interp)
 					interpolations[i] = C.compile_factor()
 					if VERBOSE > VERBOSITY_NONE:
-						print "=================================================="
+						print ("==================================================")
 			self.skip_to_next()
 			return TreeNode("primitive", [tok], tok.filename, tok.line_num)
 		else:
@@ -600,7 +600,7 @@ class Compiler(object):
 	def compile_array_literal(self):                  #  array_literal        => ARRAY '(' [array_element [',' array_element]*] ')'
 		fn, ln = self.cur_filename_line()
 		self.expect_sequence(
-			(parser.TOKEN_IDENTIFIER, KEYWORD_ARRAY),
+			(TOKEN_IDENTIFIER, KEYWORD_ARRAY),
 			('(', )
 		)
 		args=[]
@@ -681,7 +681,7 @@ class Compiler(object):
 			self.skip_to_next()
 			return TreeNode('member_expression', [expr], expr.filename, expr.line_num)
 		else:
-			if tok[0] not in (parser.TOKEN_IDENTIFIER, parser.TOKEN_VARIABLE):
+			if tok[0] not in (TOKEN_IDENTIFIER, TOKEN_VARIABLE):
 				raise CompileError("Expected identifier or variable not %s"%tok[0])
 			self.skip_to_next()
 			return TreeNode('member_expression', [tok], tok.filename, tok.line_num)
@@ -703,7 +703,7 @@ class Compiler(object):
 	
 	def compile_if_stmt(self):           #  if_stmt           => IF '(' expression ')' stmt
 		args = []
-		self.expect_token(parser.TOKEN_IDENTIFIER, KEYWORD_IF)
+		self.expect_token(TOKEN_IDENTIFIER, KEYWORD_IF)
 		self.skip_to_next()
 		self.expect_token('(')
 		self.skip_to_next()
@@ -712,22 +712,22 @@ class Compiler(object):
 		self.skip_to_next()
 		args.append(self.compile_stmt())
 		tok = self.cur_token()
-		if tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_ELSE:
+		if tok[0] == TOKEN_IDENTIFIER and tok[1] == KEYWORD_ELSE:
 			self.skip_to_next()
 			args.append(self.compile_stmt())
 		return TreeNode("if", args, args[0].filename, args[0].line_num)
 	
 	def compile_classdef_stmt(self):     #  classdef_stmt   => CLASS identifier [EXTENDS identifier] '{' [classdef_block] '}'
 		fn, ln = self.cur_filename_line()
-		self.expect_token(parser.TOKEN_IDENTIFIER, KEYWORD_CLASS)
+		self.expect_token(TOKEN_IDENTIFIER, KEYWORD_CLASS)
 		self.skip_to_next()
-		self.expect_token(parser.TOKEN_IDENTIFIER)
+		self.expect_token(TOKEN_IDENTIFIER)
 		class_name = self.cur_token()
 		self.skip_to_next()
 		tok = self.cur_token()
-		if tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_EXTENDS:
+		if tok[0] == TOKEN_IDENTIFIER and tok[1] == KEYWORD_EXTENDS:
 			self.skip_to_next()
-			self.expect_token(parser.TOKEN_IDENTIFIER)
+			self.expect_token(TOKEN_IDENTIFIER)
 			superclass_name = self.cur_token()
 			self.skip_to_next()
 		else:
@@ -745,18 +745,18 @@ class Compiler(object):
 		tok = self.cur_token()
 		while tok[0] != '}':
 			stmt=None
-			if tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_CONST:
+			if tok[0] == TOKEN_IDENTIFIER and tok[1] == KEYWORD_CONST:
 				stmt = self.compile_const_vardef_stmt()
 			else:
 				start_i = self.i
-				while tok[0] == parser.TOKEN_IDENTIFIER and tok[1] in VARDEF_DECORATORS:
+				while tok[0] == TOKEN_IDENTIFIER and tok[1] in VARDEF_DECORATORS:
 					self.skip_to_next()
 					tok = self.cur_token()
 				
-				if tok[0] == parser.TOKEN_VARIABLE:
+				if tok[0] == TOKEN_VARIABLE:
 					self.i = start_i
 					stmt = self.compile_vardef_stmt()
-				elif tok[0] == parser.TOKEN_IDENTIFIER and tok[1] == KEYWORD_FUNCTION:
+				elif tok[0] == TOKEN_IDENTIFIER and tok[1] == KEYWORD_FUNCTION:
 					self.i = start_i
 					stmt = self.compile_methoddef_stmt()
 				else:
@@ -769,13 +769,13 @@ class Compiler(object):
 		fn, ln = self.cur_filename_line()
 		decorators = []
 		tok = self.cur_token()
-		while tok[0] == parser.TOKEN_IDENTIFIER and tok[1] in VARDEF_DECORATORS:
+		while tok[0] == TOKEN_IDENTIFIER and tok[1] in VARDEF_DECORATORS:
 			decorators.append(tok[1])
 			self.skip_to_next()
 			tok = self.cur_token()
-		self.expect_token(parser.TOKEN_IDENTIFIER, KEYWORD_FUNCTION)
+		self.expect_token(TOKEN_IDENTIFIER, KEYWORD_FUNCTION)
 		self.skip_to_next()
-		self.expect_token(parser.TOKEN_IDENTIFIER)
+		self.expect_token(TOKEN_IDENTIFIER)
 		func_name = self.cur_token()
 		self.skip_to_next()
 		params = self.compile_parameter_list()
@@ -783,9 +783,9 @@ class Compiler(object):
 		return TreeNode('methoddef', [decorators, func_name, params, block], fn, ln)
 	def compile_funcdef_stmt (self):     #  funcdef_stmt    => 'function' IDENTIFIER parameter_list stmt_block
 		fn, ln = self.cur_filename_line()
-		self.expect_token(parser.TOKEN_IDENTIFIER, KEYWORD_FUNCTION)
+		self.expect_token(TOKEN_IDENTIFIER, KEYWORD_FUNCTION)
 		self.skip_to_next()
-		self.expect_token(parser.TOKEN_IDENTIFIER)
+		self.expect_token(TOKEN_IDENTIFIER)
 		func_name = self.cur_token()
 		self.skip_to_next()
 		params = self.compile_parameter_list()
@@ -809,13 +809,13 @@ class Compiler(object):
 		fn, ln = self.cur_filename_line()
 		typedef, varname, assign, is_ref = None, None, None, False
 		tok = self.cur_token()
-		if tok[0] == parser.TOKEN_IDENTIFIER:
+		if tok[0] == TOKEN_IDENTIFIER:
 			typedef = tok
 			self.skip_to_next()
 		if tok[0] == '&':
 			is_ref = True
 			self.skip_to_next()
-		self.expect_token(parser.TOKEN_VARIABLE)
+		self.expect_token(TOKEN_VARIABLE)
 		varname = self.cur_token()
 		self.skip_to_next()
 		if self.cur_token()[0] == '=':
@@ -827,11 +827,11 @@ class Compiler(object):
 		fn, ln = self.cur_filename_line()
 		decorators = []
 		tok = self.cur_token()
-		while tok[0] == parser.TOKEN_IDENTIFIER and tok[1] in VARDEF_DECORATORS:
+		while tok[0] == TOKEN_IDENTIFIER and tok[1] in VARDEF_DECORATORS:
 			decorators.append(tok[1])
 			self.skip_to_next()
 			tok = self.cur_token()
-		self.expect_token(parser.TOKEN_VARIABLE)
+		self.expect_token(TOKEN_VARIABLE)
 		variable = self.cur_token()
 		self.skip_to_next()
 		definition = None
@@ -844,9 +844,9 @@ class Compiler(object):
 	def compile_const_vardef_stmt(self): #  const_vardef_stmt=>const IDENTIFIER ['=' or_expression] ';'
 		fn, ln = self.cur_filename_line()
 		args=[]
-		self.expect_token(parser.TOKEN_IDENTIFIER, KEYWORD_CONST)
+		self.expect_token(TOKEN_IDENTIFIER, KEYWORD_CONST)
 		self.skip_to_next()
-		self.expect_token(parser.TOKEN_IDENTIFIER)
+		self.expect_token(TOKEN_IDENTIFIER)
 		args.append(self.cur_token())
 		self.skip_to_next()
 		if self.cur_token()[0] == '=':
@@ -861,13 +861,13 @@ class Compiler(object):
 
 def compile_file(php_file):
 	if type(php_file) is str:
-		php_file = parser.parse_file(php_file)
+		php_file = parse_file(php_file)
 	return compile_php(php_file)
 
 def compile_php(php_tokens):
 	if type(php_tokens) is str:
-		php_tokens = parser.parse_php(php_tokens)
-	if not isinstance(php_tokens, parser.TokenList):
+		php_tokens = parse_php(php_tokens)
+	if not isinstance(php_tokens, TokenList):
 		raise ArgumentError("Given argument is not php code, nor a list of tokens %r"%php_tokens)
 	C = Compiler(php_tokens)
 	return C.compile()
@@ -880,32 +880,32 @@ def test(*args, **kw):
 		kw['code'] = args[0]
 	if 'filename' in kw:
 		filename = kw['filename']
-		print "parsing file : %r"%filename
+		print ("parsing file : %r"%filename)
 		with file(filename) as finp:
-			print finp.read()
-		print "----"
-		php_code = parser.parse_file(filename)
+			print (finp.read())
+		print ("----")
+		php_code = parse_file(filename)
 	elif 'code' in kw:
 		code = kw['code']
-		print "parsing php code :\n%s"%code
-		print "----"
-		php_code = parser.parse_php(code)
-	print "----"
-	print "Parsed Code:\n", php_code
+		print ("parsing php code :\n%s"%code)
+		print ("----")
+		php_code = parse_php(code)
+	print ("----")
+	print ("Parsed Code:\n", php_code)
 	
 	compiled_code = compile_php(php_code)
-	print
+	print ()
 	def print_node(node, depth=0):
-		print "  "*depth, 
+		print ("  "*depth, )
 		if isinstance(node, TreeNode):
-			print node.name
+			print (node.name)
 			for c in node.children:
 				print_node(c, depth+1)
 		else:
-			print node
+			print (node)
 			
-	print "Compiled Code:\n"
-	print compiled_code.prepr()
+	print ("Compiled Code:\n")
+	print (compiled_code.prepr())
 	
 
 if __name__ == '__main__':
@@ -913,4 +913,4 @@ if __name__ == '__main__':
 	if len(sys.argv) >= 2:
 		test(filename=sys.argv[1])
 	else:
-		test(code=parser.TEST_CODE)
+		test(code=TEST_CODE)
